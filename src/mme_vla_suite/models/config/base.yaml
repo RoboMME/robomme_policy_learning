@@ -1,0 +1,73 @@
+budget: 512         # total tokens for the memory representation
+num_views: 1        # number of camera views, only use fixed views
+token_per_image: 64  # default num of tokens per image, if larger then use pooling 
+streaming_obs_horizon: 16
+
+pool_type: mean
+
+use_pos_emb: true   # If true, will concatenate position embedding to the image embedding
+use_state_emb: false # If true, will concatenate state embedding to the image embedding
+
+memory_feature:
+  img:
+    net: identity
+    input_dim: 2048 # Image embedding size (extract from siglip encoder in pi05)
+  pos:
+    input_dim: 768  # Position embedding size
+    hidden_dim: 768
+  state:
+    input_dim: 8  # Robot State embedding size for Panda
+    hidden_dim: 512
+
+
+integration_type: input # [input, modulation, expert]
+memory_token_dim: 2048 # input: 2048 modulation: 1024 expert: 1024
+
+
+# memory representation
+representation_type: static # [static, recurrent, symbolic, hybrid]
+perceptual_memory:
+  budget: ${budget}
+  type: token_sampling # [token_sampling, token_dropping]
+
+  # token sampling parameters
+  token_sampling:
+    type: fast
+    fast_token_per_image: 4
+    mid_token_per_image: 16
+    slow_token_per_image: 64
+
+
+recurrent_memory:
+  budget: ${budget}
+  type: ttt # [ttt, rmt]
+
+  hidden_dim: 512 
+  remat_n_mini_batches: 4 # number of mini-batches to remat
+  output_stats: true
+  
+  max_recur_steps: 64
+  max_pretraj_steps: 40
+  
+
+  # test-time-training parameters
+  ttt_config: 
+    ttt_type: linear
+    num_ttt_heads: 2
+    base_lr: 0.01
+    max_lr: 0.1
+    qk_norm: true
+    v_norm: true
+    max_grad_norm: 5.0
+    remat_n_mini_batches: 4
+  
+  
+  # recurrent memory transformer parameters
+  rmt_config:
+    num_attn_heads: 8
+    num_kv_heads: 1
+
+
+symbolic_memory:
+  budget: ${budget}
+  type: simple_subgoal # [simple_subgoal, grounded_subgoal]
