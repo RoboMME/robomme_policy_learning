@@ -28,8 +28,7 @@ import sentencepiece
 import os
 
 from mme_vla_suite.models.integration import history_pi0
-from mme_vla_suite.policies.hisorybench_policy import RoboMMEInputs, RoboMMEOutputs
-from mme_vla_suite.policies.hisoryvla_realrobot_policy import RoboMMERealRobotInputs, RoboMMERealRobotOutputs
+from mme_vla_suite.policies.robomme_policy import RoboMMEInputs, RoboMMEOutputs
 from mme_vla_suite.models.config.utils import get_history_config
 
 

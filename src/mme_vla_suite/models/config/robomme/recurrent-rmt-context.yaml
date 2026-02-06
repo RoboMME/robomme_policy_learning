@@ -15,7 +15,7 @@ memory_feature:
   state:
     input_dim: 8
     hidden_dim: 512
-integration_type: input
+integration_type: context
 memory_token_dim: 2048
 representation_type: recurrent
 perceptual_memory:

@@ -1,3 +1,8 @@
+"""
+We implemented our own data loader,
+which can be 5-10x faster than LeRobot dataloader and can avoid memory explosion issue
+"""
+
 import jax
 import logging
 from omegaconf import DictConfig
@@ -24,10 +29,6 @@ class DataLoaderImpl(DataLoader):
         for batch in self._data_loader:
             yield HistAugObservation.from_dict(batch), batch["actions"]
             
-            
-            
-# We implmented our own data loader
-# which can be 10x faster than LeRobot dataloader and can avoid memory explosion issue
 
 def create_data_loader(
     data_config: _config.DataConfig,

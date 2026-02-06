@@ -3,9 +3,7 @@ import jax.numpy as jnp
 
 
 import openpi.shared.array_typing as at
-from mme_vla_suite.models.representation.feature_encoder import (
-    FeatureEncoder,
-)
+from mme_vla_suite.models.representation.mem_encoder import FeatureEncoder
 
 
 class PerceptualMemory(nnx.Module):
@@ -24,7 +22,7 @@ class PerceptualMemory(nnx.Module):
             pos_output_dim=self.config.memory_feature.pos.hidden_dim,
             state_output_dim=self.config.memory_feature.state.hidden_dim,
             ouput_dim_for_recur=None,
-            output_dim_for_static=self.config.memory_token_dim,
+            output_dim_for_percep=self.config.memory_token_dim,
             use_pos_emb=self.config.use_pos_emb,
             use_state_emb=self.config.use_state_emb,
         )

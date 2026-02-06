@@ -15,9 +15,9 @@ memory_feature:
   state:
     input_dim: 8
     hidden_dim: 512
-integration_type: expert
-memory_token_dim: 1024
-representation_type: static
+integration_type: context
+memory_token_dim: 2048
+representation_type: perceptual
 perceptual_memory:
   budget: 512
   type: token_dropping

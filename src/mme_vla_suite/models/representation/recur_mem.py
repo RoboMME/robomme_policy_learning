@@ -9,7 +9,7 @@ import openpi.shared.array_typing as at
 from mme_vla_suite.models.representation.utils import kernel_init
 from mme_vla_suite.models.representation.ttt import TTTLayerLinear
 from mme_vla_suite.models.representation.rmt import RMTLayer
-from mme_vla_suite.models.representation.feature_encoder import FeatureEncoder
+from mme_vla_suite.models.representation.mem_encoder import FeatureEncoder
 
 
 class RecurrentMemory(nnx.Module):
@@ -35,7 +35,7 @@ class RecurrentMemory(nnx.Module):
             pos_output_dim=self.cfg.memory_feature.pos.hidden_dim,
             state_output_dim=self.cfg.memory_feature.state.hidden_dim,
             ouput_dim_for_recur=self.hidden_dim,
-            output_dim_for_static=None,
+            output_dim_for_percep=None,
             use_pos_emb=self.cfg.use_pos_emb,
             use_state_emb=self.cfg.use_state_emb,
         )

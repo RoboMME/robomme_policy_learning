@@ -17,7 +17,6 @@ from openpi.models.pi0 import posemb_sincos
 import openpi.models.siglip as _siglip
 import openpi.shared.array_typing as at
 import openpi.shared.nnx_utils as nnx_utils
-from omegaconf import DictConfig
 
 from mme_vla_suite.models.integration.history_observation import (
     HistAugObservation,
@@ -122,7 +121,7 @@ class HistoryPi0Config(Pi0Config):
                             [batch_size, self.max_token_len], bool
                         ),
                     )
-                elif self.history_config.representation_type == "static":
+                elif self.history_config.representation_type == "perceptual":
                     observation_spec = HistAugObservation.from_base_obs(
                         base_obs_spec,
                         static_image_emb=jax.ShapeDtypeStruct(
@@ -249,11 +248,11 @@ class HistoryPi0(BaseModel):
             self.history_config = config.history_config
             self.integration_type = config.history_config.integration_type
             self.representation_type = config.history_config.representation_type
-            assert self.integration_type in ["input", "modulation", "expert"]
-            assert self.representation_type in ["static", "recurrent", "symbolic"]
+            assert self.integration_type in ["context", "modulation", "expert"]
+            assert self.representation_type in ["perceptual", "recurrent", "symbolic"]
 
-            if self.representation_type == "static":
-                from mme_vla_suite.models.representation.perceptual_mem import (
+            if self.representation_type == "perceptual":
+                from mme_vla_suite.models.representation.percep_mem import (
                     PerceptualMemory,
                 )
 
@@ -284,8 +283,8 @@ class HistoryPi0(BaseModel):
             print(
                 f"====== Using History, Representation Type: {self.representation_type} , Integration Type: {self.integration_type} ======"
             )
-            if self.representation_type == "static":
-                print(f"Static Memory using {self.history_config.perceptual_memory.type} type\n")
+            if self.representation_type == "perceptual":
+                print(f"Perceptual Memory using {self.history_config.perceptual_memory.type} type\n")
             elif self.representation_type == "recurrent":
                 print(f"Recurrent Memory using {self.history_config.recurrent_memory.type} type\n")
             else:
@@ -394,7 +393,7 @@ class HistoryPi0(BaseModel):
 
     @at.typecheck
     def embed_memory(self, obs: HistAugObservation):
-        if self.representation_type == "static":
+        if self.representation_type == "perceptual":
             tokens, _, stats = self.mem_encoder(
                 obs.static_image_emb, obs.static_pos_emb, obs.static_state_emb
             )
@@ -430,7 +429,7 @@ class HistoryPi0(BaseModel):
         tokens = []
         na_mask = []
 
-        if self.integration_type == "input":
+        if self.integration_type == "context":
             (
                 mem_tokens,
                 mem_input_mask,
@@ -687,7 +686,7 @@ class HistoryPi0(BaseModel):
             
         else:
             prefix_tokens, prefix_mask, prefix_ar_mask, prefix_na_mask, _ = self.embed_prefix(observation)
-            if self.integration_type == "input":
+            if self.integration_type == "context":
                 prefix_attn_mask = make_attn_mask(prefix_mask, prefix_ar_mask, prefix_na_mask)
             else:
                 prefix_attn_mask = make_attn_mask(prefix_mask, prefix_ar_mask)

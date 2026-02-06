@@ -24,7 +24,7 @@ def create_trained_policy(
     sample_kwargs: dict[str, Any] | None = None,
     default_prompt: str | None = None,
     norm_stats: dict[str, transforms.NormStats] | None = None,
-) -> _policy.MMEVLAPolicy:
+) -> _policy.MME_VLA_Policy:
     
     repack_transforms = repack_transforms or transforms.Group()
     
@@ -55,7 +55,7 @@ def create_trained_policy(
     print("Training config: ", train_config)
     print("Data config: ", data_config)
 
-    return _policy.MMEVLAPolicy(
+    return _policy.MME_VLA_Policy(
         model,
         seed=seed,
         transforms=[

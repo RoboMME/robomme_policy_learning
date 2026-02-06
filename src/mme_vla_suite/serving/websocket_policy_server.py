@@ -8,7 +8,7 @@ from openpi_client import msgpack_numpy
 import websockets.asyncio.server as _server
 import websockets.frames
 
-from mme_vla_suite.policies.policy import MMEVLAPolicy
+from mme_vla_suite.policies.policy import MME_VLA_Policy
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class WebsocketPolicyServer:
 
     def __init__(
         self,
-        policy: MMEVLAPolicy,
+        policy: MME_VLA_Policy,
         host: str = "0.0.0.0",
         port: int | None = None,
         metadata: dict | None = None,

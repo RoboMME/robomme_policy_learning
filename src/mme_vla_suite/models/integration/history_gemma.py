@@ -1,12 +1,10 @@
-from collections.abc import Sequence
-import dataclasses
-from os import environ
-from typing import Literal, TypeAlias
-
 import einops
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
+
+from collections.abc import Sequence
+from typing import Literal, TypeAlias
 
 from openpi.models.gemma import PALIGEMMA_VOCAB_SIZE
 from openpi.models.gemma import Config
@@ -19,10 +17,11 @@ from openpi.models.gemma import Attention
 import openpi.models.lora as lora
 import openpi.shared.array_typing as at
 import openpi.training.sharding as sharding
+
+
 from mme_vla_suite.models.representation.utils import kernel_init_out_proj
 from mme_vla_suite.models.integration.utils import _name
-from mme_vla_suite.models.integration.utils import Attention_with_memexp
-
+from mme_vla_suite.models.integration.utils import Attention_with_MemoryExpert
 from mme_vla_suite.models.integration.utils import get_config, Variant
 
 @at.typecheck
@@ -38,7 +37,7 @@ class MemoryRMSNorm(nn.Module):
             return normed_inputs.astype(dtype)
         
         # modulation = nn.Dense(x.shape[-1] * 2, kernel_init=nn.initializers.zeros, dtype=dtype)(cond)
-        modulation = nn.Dense(x.shape[-1] * 2, kernel_init=kernel_init_out_proj, dtype=dtype)(cond)
+        modulation = nn.Dense(x.shape[-1] * 2, kernel_init=kernel_init_out_proj, dtype=dtype)(cond) # add small randomness instead of pure zeros
         scale, shift = jnp.split(modulation, 2, axis=-1)
         normed_inputs = normed_inputs * (1 + scale) + shift
         return normed_inputs.astype(dtype)
@@ -59,7 +58,7 @@ class MemoryAttention(nn.Module):
             1,
             256,
             1024,
-        )  # same dim as action expert
+        )  # same dim as the action expert in pi05
         assert mem_width == x_width == width
         q_einsum = lora.Einsum(
             shape=(num_heads, width, head_dim),
@@ -144,7 +143,7 @@ class HistoryBlock(nn.Module):
         )
         
         if self.integration_type == "expert":
-            attn = Attention_with_memexp(configs=self.configs, name="attn")
+            attn = Attention_with_MemoryExpert(configs=self.configs, name="attn")
         else:
             attn = Attention(configs=self.configs, name="attn")
 

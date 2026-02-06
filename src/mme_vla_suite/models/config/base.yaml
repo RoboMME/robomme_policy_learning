@@ -1,7 +1,7 @@
 budget: 512         # total tokens for the memory representation
 num_views: 1        # number of camera views, only use fixed views
 token_per_image: 64  # default num of tokens per image, if larger then use pooling 
-streaming_obs_horizon: 16
+streaming_obs_horizon: 16  # input horizon for memory encoder
 
 pool_type: mean
 
@@ -21,11 +21,11 @@ memory_feature:
 
 
 integration_type: input # [input, modulation, expert]
-memory_token_dim: 2048 # input: 2048 modulation: 1024 expert: 1024
+memory_token_dim: 2048 # context: 2048; modulation: 1024; expert: 1024
 
 
 # memory representation
-representation_type: static # [static, recurrent, symbolic, hybrid]
+representation_type: perceptual # [perceptual, recurrent, symbolic]
 perceptual_memory:
   budget: ${budget}
   type: token_sampling # [token_sampling, token_dropping]

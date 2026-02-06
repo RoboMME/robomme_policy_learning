@@ -15,10 +15,7 @@ from mme_vla_suite.models.integration.history_observation import HistAugObservat
 from mme_vla_suite.models.integration.history_pi0 import HistoryPi0
 from mme_vla_suite.shared.mem_buffer import MemoryBuffer, MemoryBufferRecurrent
 
-from mme_vla_suite.training.train_utils import EEF_VEL_HISTORY_BUDGET_DICT
-from collections import deque
-
-class MMEVLAPolicy:
+class MME_VLA_Policy:
     def __init__(
         self,
         model: HistoryPi0,
@@ -142,7 +139,7 @@ class MMEVLAPolicy:
             inputs["recur_pos_emb"] = recur_pos_emb
             inputs["recur_state_emb"] = self._normalize_state(recur_state_emb)
             inputs["recur_mask"] = recur_mask
-        elif self.config.representation_type == "static":
+        elif self.config.representation_type == "perceptual":
             history_feats_gather_fn = self.mem_buffer.default_history_feats_gather_fn
             token_budget = self.config.perceptual_memory.budget
             

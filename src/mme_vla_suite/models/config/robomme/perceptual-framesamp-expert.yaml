@@ -1,4 +1,4 @@
-budget: 0
+budget: 512
 num_views: 1
 token_per_image: 64
 streaming_obs_horizon: 16
@@ -15,20 +15,20 @@ memory_feature:
   state:
     input_dim: 8
     hidden_dim: 512
-integration_type: input
-memory_token_dim: 2048
-representation_type: symbolic
+integration_type: expert
+memory_token_dim: 1024
+representation_type: perceptual
 perceptual_memory:
-  budget: 0
+  budget: 512
   type: token_sampling
   token_sampling:
-    type: fast
+    type: mid
     fast_token_per_image: 4
     mid_token_per_image: 16
     slow_token_per_image: 64
-  token_per_image: 4
+  token_per_image: 16
 recurrent_memory:
-  budget: 0
+  budget: 512
   type: ttt
   hidden_dim: 512
   remat_n_mini_batches: 4
@@ -50,5 +50,5 @@ recurrent_memory:
   max_input_tokens: 4096
   mini_batch_size: 64
 symbolic_memory:
-  budget: 0
-  type: grounded_subgoal
+  budget: 512
+  type: simple_subgoal

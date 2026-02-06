@@ -17,16 +17,16 @@ memory_feature:
     hidden_dim: 512
 integration_type: modulation
 memory_token_dim: 1024
-representation_type: static
+representation_type: perceptual
 perceptual_memory:
   budget: 512
-  type: token_dropping
+  type: token_sampling
   token_sampling:
-    type: fast
+    type: mid
     fast_token_per_image: 4
     mid_token_per_image: 16
     slow_token_per_image: 64
-  token_per_image: 4
+  token_per_image: 16
 recurrent_memory:
   budget: 512
   type: ttt

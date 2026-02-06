@@ -30,7 +30,7 @@ def get_config(variant: Variant) -> Config:
             num_kv_heads=1,
             head_dim=16,
         )
-    if variant == "gemma_300m":
+    if variant == "gemma_300m": # This is the action expert in pi05
         # 311M params
         return Config(
             width=1024,
@@ -40,7 +40,7 @@ def get_config(variant: Variant) -> Config:
             num_kv_heads=1,
             head_dim=256,
         )
-    if variant == "gemma_2b":
+    if variant == "gemma_2b": # This is the VLM expert in pi05
         return Config(
             width=2048,
             depth=18,
@@ -76,7 +76,7 @@ def get_config(variant: Variant) -> Config:
                 "ffn": lora.LoRAConfig(rank=32, alpha=32.0),
             },
         )
-    if variant == "gemma_150m":  # this is for memory expert
+    if variant == "gemma_150m":  # this is the memory expert to be integrated in pi05
         # 135 MB     
         return Config(
             width=1024,
@@ -99,7 +99,7 @@ def _name(name, i):
 
 
 @at.typecheck
-class Attention_with_memexp(nn.Module):
+class Attention_with_MemoryExpert(nn.Module):
     """Attention with memory expert.
     Only change the names to match the checkpoint.
     """
