@@ -17,6 +17,7 @@ class RemoveStrings(transforms.DataTransformFn):
     
 
 def create_data_loader(
+    dataset_path: str,
     data_config: _config.DataConfig,
     history_config: DictConfig,
     action_horizon: int,
@@ -27,6 +28,7 @@ def create_data_loader(
     seed: int = 0,
 ):
     dataset = RoboMMEDataset(
+        dataset_path=dataset_path,
         data_config=data_config, 
         history_config=history_config, 
         action_horizon=action_horizon,
@@ -56,14 +58,13 @@ def create_data_loader(
 
 
 
-def main(config_name: str = "mme_vla_suite", repo_id: str = "robomme"):
+def main(config_name: str = "mme_vla_suite", repo_id: str = "robomme", dataset_path: str = "data/robomme_preprocessed_data"):
     config = _config.get_config(config_name)
     config = dataclasses.replace(config, data=dataclasses.replace(config.data, repo_id=repo_id))
     data_config = config.data.create(config.assets_dirs, config.model)
     
-    history_config = OmegaConf.load("src/mme_vla_suite/models/config/robomme_sim/bg512-obs16-symbolic-simple-subgoal.yaml")
-    
     data_loader, num_batches = create_data_loader(
+        dataset_path=dataset_path,
         data_config=data_config,
         history_config=None,
         action_horizon=config.model.action_horizon,

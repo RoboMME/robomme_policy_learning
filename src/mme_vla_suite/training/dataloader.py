@@ -31,6 +31,7 @@ class DataLoaderImpl(DataLoader):
             
 
 def create_data_loader(
+    dataset_path: str,
     data_config: _config.DataConfig,
     history_config: str | DictConfig | None,
     action_horizon: int,
@@ -47,6 +48,7 @@ def create_data_loader(
     history_config = get_history_config(history_config)
 
     dataset = RoboMMEDataset(
+        dataset_path=dataset_path,
         data_config=data_config, 
         history_config=history_config, 
         action_horizon=action_horizon

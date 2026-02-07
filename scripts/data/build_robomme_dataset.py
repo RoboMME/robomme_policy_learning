@@ -143,15 +143,15 @@ class DatasetProcessor:
     extraction, memory buffer management, and saving preprocessed samples.
     """
 
-    def __init__(self, repo_id: str = "dummy", execution_horizon: int = 16):
+    def __init__(self, raw_data_path: str = "data/raw", preprocessed_data_path: str = "data/preprocessed", execution_horizon: int = 16):
         """Initialize the dataset processor.
 
         Args:
             repo_id: Repository identifier for the dataset.
             execution_horizon: Horizon for execution steps (used for token dropping).
         """
-        self.repo_id = repo_id
-        self.dataset_path = os.path.join("data/preprocessed", repo_id)
+        self.raw_data_path = raw_data_path
+        self.dataset_path = preprocessed_data_path
 
         # Remove existing preprocessed data if it exists
         if os.path.exists(self.dataset_path):
@@ -175,7 +175,6 @@ class DatasetProcessor:
         Iterates through all HDF5 files in the raw data directory, processes
         each episode, and saves preprocessed samples along with metadata.
         """
-        raw_data_path = os.path.join("data/raw", self.repo_id)
         global_episode_idx = 0
         mem_buffer = MemoryBuffer(
             num_views=1,
@@ -186,11 +185,11 @@ class DatasetProcessor:
         self.exec_sample_id = 0
         self.total_sample_id = 0
 
-        for file in os.listdir(raw_data_path):
+        for file in os.listdir(self.raw_data_path):
             if not file.endswith(".h5"):
                 continue
             logger.info(f"Processing file: {file}")
-            with h5py.File(os.path.join(raw_data_path, file), "r") as data:
+            with h5py.File(os.path.join(self.raw_data_path, file), "r") as data:
                 for env_id in data.keys():
                     env_dataset = data[env_id]
                     episode_indices = sorted(
@@ -370,10 +369,16 @@ if __name__ == "__main__":
         description="Preprocess raw HDF5 dataset files for training"
     )
     parser.add_argument(
-        "--repo-id",
+        "--raw_data_path",
         type=str,
-        default="dummy",
-        help="Repository identifier for the dataset to process",
+        default="data/raw",
+        help="Path to the raw data",
+    )
+    parser.add_argument(
+        "--preprocessed_data_path",
+        type=str,
+        default="data/preprocessed",
+        help="Path to the dataset",
     )
     args = parser.parse_args()
 
@@ -385,7 +390,7 @@ if __name__ == "__main__":
 
     import time
     start_time = time.time()
-    preprocessor = DatasetProcessor(repo_id=args.repo_id)
+    preprocessor = DatasetProcessor(raw_data_path=args.raw_data_path, preprocessed_data_path=args.preprocessed_data_path)
     preprocessor.run()
     end_time = time.time()
     logger.info(f"Time taken: {(end_time - start_time) / 60} minutes")

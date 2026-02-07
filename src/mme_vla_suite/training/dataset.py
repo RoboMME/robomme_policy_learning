@@ -24,12 +24,15 @@ def load_vector_file(vector_path: str, step_idx: int) -> tuple[dict, int]:
     
 
 class SampleDataset(Dataset):
-    def __init__(self, repo_id: str):
-        self.dataset_path =  os.path.join("data/preprocessed", repo_id)
+    def __init__(self, dataset_path: str):
+        self.dataset_path = dataset_path
         self.stats = json.load(open(os.path.join(self.dataset_path, "meta", "stats.json")))
     
     def __len__(self):
-        return self.stats["total_samples"]
+        if "execution_samples" in self.stats:
+            return self.stats["execution_samples"]
+        else:
+            return self.stats["total_samples"]
     
     def __getitem__(self, idx):
         with open(os.path.join(self.dataset_path,  "data", f"{idx}.pkl"), "rb") as f:
@@ -39,6 +42,7 @@ class SampleDataset(Dataset):
 class RoboMMEDataset(Dataset):
     def __init__(
         self,
+        dataset_path: str,
         data_config: _config.DataConfig,
         history_config: DictConfig | None,
         action_horizon: int,
@@ -50,7 +54,7 @@ class RoboMMEDataset(Dataset):
         
         
         self.action_horizon = action_horizon
-        self.dataset = SampleDataset(data_config.repo_id)
+        self.dataset = SampleDataset(dataset_path)
         self.feature_dir = Path(self.dataset.dataset_path) / "features"
 
         if self.history_config is not None:
