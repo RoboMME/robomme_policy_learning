@@ -1,6 +1,0 @@
-[submodule "third_party/ManiSkill"]
-	path = third_party/ManiSkill
-	url = https://github.com/YinpeiDai/ManiSkill.git
-[submodule "third_party/robomme"]
-	path = third_party/robomme
-	url = git@github.com:RoboMME/robomme.git
