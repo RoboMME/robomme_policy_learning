@@ -78,8 +78,8 @@ if [ $? != 0 ]; then
     
     # Create second window for eval in the same session
     tmux new-window -t $session_name -n "eval"
-    tmux send-keys -t $session_name:eval "source setup_historybench.bash" Enter
-    tmux send-keys -t $session_name:eval "CUDA_VISIBLE_DEVICES=$GPU_ID_client python examples/history_bench_sim/eval.py --args.model_seed=$SEED --args.port=$PORT --args.policy_name=$MODEL_TYPE --args.model_ckpt_id=$CKPT_ID ${EXTRA_ARGS}; tmux wait-for -S eval-done" Enter
+    tmux send-keys -t $session_name:eval "micromamba activate robomme" Enter
+    tmux send-keys -t $session_name:eval "CUDA_VISIBLE_DEVICES=$GPU_ID_client python examples/robomme/eval.py --args.model_seed=$SEED --args.port=$PORT --args.policy_name=$MODEL_TYPE --args.model_ckpt_id=$CKPT_ID ${EXTRA_ARGS}; tmux wait-for -S eval-done" Enter
 
     # Wait for eval to complete, or exit if tmux session is killed
     tmux wait-for eval-done &
