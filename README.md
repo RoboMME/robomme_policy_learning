@@ -34,20 +34,14 @@
 
 
 ### Install RoboMME Simulator
-First, clone the repo and initialize the ManiSkill and robomme submodules:
+Clone the repo and initialize the RoboMME submodules:
 ```
 git clone git@github.com:RoboMME/MME-VLA-Suite.git
 cd MME-VLA-Suite
 git submodule update
 ```
 
-Then install the robomme simulator with [micromamba](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html):
-```
-micromamba create -f examples/robomme/environment.yaml 
-pip install -e packages/openpi-client
-pip install -e third_party/ManiSkill
-pip install -e third_party/robomme
-```
+Then install the robomme environment following the document [here](examples/robomme/readme.md)
 
 ### Install MME-VLA-Suite Repo
 ```
@@ -219,7 +213,7 @@ Set the `MODEL_TYPE` variable to one of the following:
 3. **Perceptual MME-VLA (6):** `perceptual-framesamp-context`, `perceptual-framesamp-modul`, `perceptual-framesamp-expert`, `perceptual-tokendrop-context`, `perceptual-tokendrop-modul`, `perceptual-tokendrop-expert`
 4. **Recurrent MME-VLA (6):** `recurrent-rmt-context`, `recurrent-rmt-modul`, `recurrent-rmt-expert`, `recurrent-ttt-context`, `recurrent-ttt-modul`, `recurrent-ttt-expert`
 
-Running `eval.sh` automatically starts two tmux windows: one for the policy server and one for RoboMME evaluation.
+Running `eval.sh` automatically starts two tmux windows: one for the policy server and one for RoboMME evaluation. If the evaluation is interrupt, you can re run the script it will automaticaly resume from the genereated `progress.json`.
 
 
 ### Manual evaluation (per model)
@@ -229,14 +223,18 @@ Details are provided in [here](manual_evaluation.md)
 
 ## TroubleShooting
 Q1: Failure about Vulkan Installation.  
-A1: We recommend resintall nvidia driver and vulkan packages, we use nvidia driver 570.211.01 and vulkan 1.3.275.  
+A1: We recommend resintall nvidia driver and vulkan packages, we use nvidia driver 570.211.01 and vulkan 1.3.275.  If still does not work, you can switch into CPU rendering
+```
+os.environ['SAPIEN_RENDER_DEVICE'] = 'cpu'
+os.environ['MUJOCO_GL'] = 'osmesa'
+```
 
 
 ## Ackowledgement 
 This work was supported in part by NSF SES-2128623, NSF CAREER #2337870, NSF NRI #2220876, NSF NAIRR250085. We would also like to thank the wondeful [OpenPi](https://github.com/Physical-Intelligence/openpi/tree/main) codebase from Physical-Intelligence.
 
 
-## Bibtext
+## Bibtex
 
 ```
 ...

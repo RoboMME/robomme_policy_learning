@@ -1,6 +1,4 @@
-import warnings
 import os
-import logging
 import numpy as np
 import cv2
 import imageio
@@ -8,24 +6,38 @@ import re
 import collections
 from typing import Tuple, Optional
 
-def suppress_warnings():
-    # Suppress specific warnings
-    warnings.filterwarnings("ignore", category=UserWarning, module="gymnasium")
-    warnings.filterwarnings("ignore", message=".*env.task_list.*")
-    warnings.filterwarnings("ignore", message=".*env.elapsed_steps.*")
-    warnings.filterwarnings("ignore", message=".*panda_wristcam is not in the task's list of supported robots.*")
-    warnings.filterwarnings("ignore", message=".*No initial pose set for actor builder.*")
 
-    warnings.filterwarnings("ignore", category=UserWarning, module="mani_skill")
 
-    # Suppress ManiSkill warnings - comprehensive approach
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow warnings
+TASK_WITH_VIDEO_DEMO = [
+    "VideoUnmask", "VideoUnmaskSwap", "VideoPlaceButton", "VideoPlaceOrder",
+    "VideoRepick", "MoveCube", "InsertPeg", "PatternLock", "RouteStick"
+]
 
-    # Set up logging to suppress all warnings
-    logging.basicConfig(level=logging.CRITICAL)
-    logging.getLogger("mani_skill").setLevel(logging.CRITICAL)
-    logging.getLogger("mani_skill").propagate = False
+TASK_NAME_LIST=  [      
+    "BinFill",
+    "StopCube",
+    "PickXtimes",
+    "SwingXtimes",
     
+    "ButtonUnmask",
+    "VideoUnmask",
+    "VideoUnmaskSwap",
+    "ButtonUnmaskSwap",
+    
+    "PickHighlight",
+    "VideoRepick",
+    "VideoPlaceButton",
+    "VideoPlaceOrder",
+    
+    "MoveCube",
+    "InsertPeg",
+    "PatternLock",
+    "RouteStick"
+]
+
+SUBGOAL_TYPES = ("simple_subgoal", "grounded_subgoal")
+
+
 
 def pack_buffer(image_buffer, state_buffer, exec_start_idx=0):
     image_output = np.stack(image_buffer, axis=0).astype(np.uint8)[:, None]
@@ -152,38 +164,3 @@ class RolloutRecorder:
              
     def save_video(self, filename: str):
         imageio.mimsave(os.path.join(self.save_dir, filename), self.total_images, fps=self.fps)
-
-
-TASK_WITH_VIDEO_DEMO = [
-    "VideoUnmask", "VideoUnmaskSwap", "VideoPlaceButton", "VideoPlaceOrder",
-    "VideoRepick", "MoveCube", "InsertPeg", "PatternLock", "RouteStick"
-]
-
-TASK_NAME_LIST=  [      
-    "BinFill",
-    "StopCube",
-    "PickXtimes",
-    "SwingXtimes",
-    
-    "ButtonUnmask",
-    "VideoUnmask",
-    "VideoUnmaskSwap",
-    "ButtonUnmaskSwap",
-    
-    "PickHighlight",
-    "VideoRepick",
-    "VideoPlaceButton",
-    "VideoPlaceOrder",
-    
-    "MoveCube",
-    "InsertPeg",
-    "PatternLock",
-    "RouteStick"
-]
-
-TASKS_WITH_STICK_GRIPPER = [
-    "PatternLock",
-    "RouteStick"
-]
-
-SUBGOAL_TYPES = ("simple_subgoal", "grounded_subgoal")

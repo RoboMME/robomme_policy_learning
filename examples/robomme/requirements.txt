@@ -1,0 +1,12 @@
+ninja==1.13.0 
+deepspeed==0.18.3 
+google-genai==1.56.0 
+google-generativeai==0.8.6 
+ms_swift==3.11.1 
+qwen-vl-utils==0.0.14 
+transformers==4.57.3 
+moviepy==2.2.1
+setuptools==80.9.0
+torch==2.9.1
+torchvision==0.24.1
+git+https://github.com/YinpeiDai/ManiSkill.git@dev

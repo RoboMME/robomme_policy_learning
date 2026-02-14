@@ -1,4 +1,3 @@
-import collections
 import dataclasses
 import json
 import os
@@ -11,7 +10,6 @@ import numpy as np
 
 from openpi_client import websocket_client_policy as _websocket_client_policy
 from utils import (
-    suppress_warnings,
     pack_buffer,
     check_args,
     TASK_NAME_LIST,
@@ -21,14 +19,12 @@ from utils import (
 )
 from utils import RolloutRecorder
 from env_runner import EnvRunner
-from subgoal_prediction.predictor import build_subgoal_predictor, SubgoalPredictorBase
+from subgoal_predictor import build_subgoal_predictor, SubgoalPredictorBase
 
 # qwen3-vl environment variables
 os.environ['IMAGE_MAX_TOKEN_NUM'] = '256'
 os.environ['VIDEO_MAX_TOKEN_NUM'] = '64'
 os.environ['FPS_MAX_FRAMES'] = '10'
-
-suppress_warnings()
 
 
 
@@ -38,7 +34,7 @@ class Args:
     port: int = 8011
 
     obs_horizon: int = 16
-    max_steps: int = 1300
+    max_steps: int = 1300 # fix this
     save_dir: str = "runs/evaluation"
     overwrite: bool = False
 

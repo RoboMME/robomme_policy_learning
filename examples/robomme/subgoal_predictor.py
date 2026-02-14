@@ -3,8 +3,8 @@ from pathlib import Path
 
 import os
 import shutil
-from examples.history_bench_sim.env_runner import EnvRunner
-from examples.history_bench_sim.utils import EpisodeState, SUBGOAL_TYPES, TASK_WITH_VIDEO_DEMO
+from env_runner import EnvRunner
+from utils import EpisodeState, SUBGOAL_TYPES, TASK_WITH_VIDEO_DEMO
 
 from subgoal_prediction.gemini.api import GeminiModel
 from subgoal_prediction.gemini.prompts import (
@@ -33,7 +33,7 @@ LONG_FIRST_ACTION_TASKS = [
     
     "MoveCube",
     "InsertPeg"
-] # For Gemini only
+] # For Gemini only. Due to we found Gemini is very inconsistent for incremental video understanding, hard code to make it work better
 
 
 
@@ -215,9 +215,9 @@ class MemERSubgoalPredictor(SubgoalPredictorBase):
         response = self.api.call()
         return response, False
 
-    # def finalize(self, epstate: EpisodeState, success_flag: str) -> None:
-    #     if self.episode_dir:
-    #         shutil.rmtree(self.episode_dir)
+    def finalize(self, epstate: EpisodeState, success_flag: str) -> None:
+        if self.episode_dir:
+            shutil.rmtree(self.episode_dir) # save some space, you can comment this function out to keep all video frames
 
 
 class OracleSubgoalPredictor(SubgoalPredictorBase):
@@ -235,8 +235,6 @@ class OracleSubgoalPredictor(SubgoalPredictorBase):
             return self.env_runner.simple_subgoal_oracle, False
         else:
             return self.env_runner.grounded_subgoal_oracle, False
-
-
 
 
 def build_subgoal_predictor(
