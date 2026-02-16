@@ -16,7 +16,7 @@
 
 # set the MODEL_TYPE from the list above according to your needs
 
-MODEL_TYPE="symbolic_groundedSG_oracle"
+MODEL_TYPE="perceptual-framesamp-modul"
 SEED=7
 PORT=8001
 CKPT_ID=79999
