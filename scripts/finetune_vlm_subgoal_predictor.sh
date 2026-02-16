@@ -7,7 +7,7 @@
 # data/vlm_subgoal_prediction_data/memer/grounded_subgoal_train.jsonl
 
 DATASET_PATH='data/vlm_subgoal_prediction_data/qwenvl/simple_subgoal_train.jsonl'
-OUTPUT_DIR='runs/ckpts/vlm_subgoal_predictor/qwenvl_simple_subgoal'
+OUTPUT_DIR='runs/ckpts/vlm_subgoal_predictor/qwenvl/simple_subgoal'
 
 PYTORCH_CUDA_ALLOC_CONF='expandable_segments:True' \
 IMAGE_MAX_TOKEN_NUM=256 \
@@ -16,7 +16,7 @@ FPS_MAX_FRAMES=10 \
 NPROC_PER_NODE=4 \
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
 swift sft \
-    --model 'runs/ckpts/vlm_subgoal_predictor/Qwen3-VL-4B-Instruct' \
+    --model 'Qwen/Qwen3-VL-4B-Instruct' \
     --dataset $DATASET_PATH \
     --split_dataset_ratio 0.0 \
     --load_from_cache_file true \

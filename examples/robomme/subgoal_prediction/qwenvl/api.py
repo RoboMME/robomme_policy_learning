@@ -33,7 +33,7 @@ class Qwen3VLModel:
             raise ValueError(f"Invalid subgoal type: {subgoal_type}")
         
         self.engine = PtEngine(
-            model_id_or_path='runs/ckpts/vlm_subgoal_predictor/Qwen3-VL-4B-Instruct', # "Qwen/Qwen3-VL-4B-Instruct"
+            model_id_or_path='Qwen/Qwen3-VL-4B-Instruct',
             adapters=[adapter_path],
             attn_impl='flash_attention_2' #'sdpa'
         )

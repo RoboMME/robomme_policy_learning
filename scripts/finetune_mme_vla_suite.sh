@@ -9,7 +9,7 @@ MME_VLA_TYPE="perceptual-framesamp-modul"
 export WANDB_API_KEY=<YOUR_WANDB_API_KEY>
 
 CUDA_VISIBLE_DEVICES=0,1,2,3 XLA_PYTHON_CLIENT_MEM_FRACTION=0.95 uv run scripts/train.py mme_vla_suite \
---exp-name=${MME_VLA_TYPE}_v0 \
+--exp-name=${MME_VLA_TYPE}_v1 \
 --batch-size=64 \
 --num-workers=4 \
 --fsdp-devices=4 \

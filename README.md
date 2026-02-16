@@ -4,8 +4,8 @@
 
 - [Updates](#updates)
 - [Installation](#installation)
-  - [Install RoboMME Simulator](#install-robomme-simulator)
   - [Install MME-VLA-Suite Repo](#install-mme-vla-suite-repo)
+  - [Install RoboMME Simulator](#install-robomme-simulator)
 - [Repository Structure](#repository-structure)
 - [Download](#download)
   - [Download Training Data](#download-training-data)
@@ -30,24 +30,25 @@
 
 ## Installation
 
-
-### Install RoboMME Simulator
-Clone the repo and initialize the RoboMME submodules:
-```
-git clone git@github.com:RoboMME/MME-VLA-Suite.git
-cd MME-VLA-Suite
-git submodule update
-```
-
-Then install the robomme environment following the document [here](examples/robomme/readme.md)
-
 ### Install MME-VLA-Suite Repo
 ```
 GIT_LFS_SKIP_SMUDGE=1 uv sync
 GIT_LFS_SKIP_SMUDGE=1 uv pip install -e .
 ```
 
-Set the `OPENPI_DATA_HOME` path in your `~/.bashrc`, e.g. `export OPENPI_DATA_HOME=<your_openpi_homedir>`.
+Set the `OPENPI_DATA_HOME` path in your `~/.bashrc`, e.g. `export OPENPI_DATA_HOME=<your_openpi_homedir>`. For more details, please refer [openpi](https://github.com/Physical-Intelligence/openpi/tree/main?tab=readme-ov-file#fine-tuned-models).
+
+
+### Install RoboMME Simulator
+Clone the repo and initialize the RoboMME submodules:
+```
+git clone git@github.com:RoboMME/MME-VLA-Suite.git
+cd MME-VLA-Suite
+git submodule update --init
+```
+
+Then install the robomme environment following the document [here](examples/robomme/readme.md)   
+We use seperate environments for VLA training/inference and RoboMME simulator. During evaluation, we will use websocket to connect them following [openpi](https://github.com/Physical-Intelligence/openpi/tree/main).
 
 ## Repository Structure
 ```
@@ -104,9 +105,7 @@ Alternatively, run `uv run scripts/build_vlm_subgoal_dataset.py` and `uv run scr
 ### Download Pre-trained Models
 Download the $\pi_{0.5}$-base backbone:
 ```
-from openpi.shared import download
-OPENPI_DATA_HOME = os.getenv("OPENPI_DATA_HOME", "~/.cache/openpi")
-download.maybe_download("gs://openpi-assets/checkpoints/pi05_base")
+uv run scripts/download_pi05_base.py
 ```
 Download the [pi05_vision_encoder](https://huggingface.co/Yinpei/pi05_vision_encoder) (a subset of the $\pi_{0.5}$ parameters used for dataset feature construction without loading the full model; visual token embeddings are computed and cached for training, and the vision encoder stays frozen):
 ```
@@ -114,13 +113,7 @@ cd $OPENPI_DATA_HOME
 git clone git@hf.co:Yinpei/pi05_vision_encoder
 ```
 
-Download [Qwen3-VL-4B](https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct), used for VLM subgoal prediction with symbolic memory in MME-VLA:
-```
-cd runs/ckpts/vlm_subgoal_predictor
-git clone git@hf.co:Qwen/Qwen3-VL-4B-Instruct
-```
-
-### Download Fine-tuned VLA/VLM Checkpoints
+### Download Fine-tuned VLA/VLM Checkpoints (Optional)
 Fine-tuned models and evaluation results are stored under the `runs` directory. Create it if needed:
 ```
 cd MME-VLA-Suite
@@ -130,25 +123,23 @@ mkdir runs/evaluation   # evaluation results
 mkdir runs/assets       # save all normalization statistics files here
 ```
 
+You can skip the following steps if you want to fine-tune your own VLA/VLM directly, see [Model Training](#model-training)
+
 Download MME-VLA variants [here](https://huggingface.co/Yinpei/mme_vla_suite):
 ```
-cd MME-VLA-Suite/runs/ckpts
-git clone git@hf.co:Yinpei/mme_vla_suite
+git clone git@hf.co:Yinpei/mme_vla_suite runs/ckpts/mme_vla_suite
 ```
 We release all checkpoints for symbolic and perceptual memory, and a subset of recurrent memory for research. Recurrent memory is still underperforming; we will release more recurrent variants as results improve.
 
 Download VLM subgoal predictors [here](https://huggingface.co/Yinpei/vlm_subgoal_predictor):
 ```
-cd MME-VLA-Suite/runs/ckpts
-git clone git@hf.co:Yinpei/vlm_subgoal_predictor
+git clone git@hf.co:Yinpei/vlm_subgoal_predictor runs/ckpts/vlm_subgoal_predictor
 ```
 
 Download the fine-tuned $\pi_{0.5}$ baseline [here](https://huggingface.co/Yinpei/pi05_baseline):
 ```
-cd MME-VLA-Suite/runs/ckpts
-git clone git@hf.co:Yinpei/pi05_baseline
+git clone git@hf.co:Yinpei/pi05_baseline runs/ckpts/pi05_baseline
 ```
-
 
 
 ## Model Training

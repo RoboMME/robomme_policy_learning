@@ -24,7 +24,7 @@ class Qwen3VLModelMemER:
         self.system_prompt = "You are a robot program that predicts actions. The current input images from the front-view camera shows the most recent actions the robot has executed. The past keyframes are selected frames of particular importance from all the actions the robot has executed so far. Based on these, output the current subtask the robot should execute and nothing else. Some tasks may have a video input for initial setup, some may not.\n\nReturn a JSON with:\n- current_subtask: the action that should be executed at the current timestep\n- keyframe_positions: list of frame positions (1-indexed) from the current input images where actions change"
         
         self.engine = PtEngine(
-            model_id_or_path='runs/ckpts/vlm_subgoal_predictor/Qwen3-VL-4B-Instruct', # "Qwen/Qwen3-VL-4B-Instruct"
+            model_id_or_path='Qwen/Qwen3-VL-4B-Instruct',
             adapters=[adapter_path],
             attn_impl='flash_attention_2' #'sdpa'
         )
