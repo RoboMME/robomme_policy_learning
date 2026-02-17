@@ -19,8 +19,8 @@
 - [Evaluation](#evaluation)
   - [Evaluation with the integrated script](#evaluation-with-the-integrated-script)
   - [Manual evaluation (per model)](#manual-evaluation-per-model)
-- [TroubleShooting](#troubleshooting)
-- [Ackowledgement](#ackowledgement)
+- [Troubleshooting](#troubleshooting)
+- [Acknowledgement](#acknowledgement)
 - [Citation](#citation)
 
 ## Updates
@@ -36,7 +36,7 @@ GIT_LFS_SKIP_SMUDGE=1 uv sync
 GIT_LFS_SKIP_SMUDGE=1 uv pip install -e .
 ```
 
-Set the `OPENPI_DATA_HOME` path in your `~/.bashrc`, e.g. `export OPENPI_DATA_HOME=<your_openpi_homedir>`. For more details, please refer [openpi](https://github.com/Physical-Intelligence/openpi/tree/main?tab=readme-ov-file#fine-tuned-models).
+Set the `OPENPI_DATA_HOME` path in your `~/.bashrc`, e.g. `export OPENPI_DATA_HOME=<your_openpi_homedir>`. For more details, please refer to [openpi](https://github.com/Physical-Intelligence/openpi/tree/main?tab=readme-ov-file#fine-tuned-models).
 
 
 ### Install RoboMME Simulator
@@ -47,8 +47,8 @@ cd MME-VLA-Suite
 git submodule update --init
 ```
 
-Then install the robomme environment following the document [here](examples/robomme/readme.md)   
-We use seperate environments for VLA training/inference and RoboMME simulator. During evaluation, we will use websocket to connect them following [openpi](https://github.com/Physical-Intelligence/openpi/tree/main).
+Then install the robomme environment following the documentation [here](examples/robomme/readme.md).
+We use separate environments for VLA training/inference and the RoboMME simulator. During evaluation, we use a WebSocket to connect them, following [openpi](https://github.com/Physical-Intelligence/openpi/tree/main).
 
 ## Repository Structure
 ```
@@ -125,7 +125,7 @@ mkdir runs/evaluation   # evaluation results
 mkdir runs/assets       # save all normalization statistics files here
 ```
 
-You can skip the following steps if you want to fine-tune your own VLA/VLM directly, see [Model Training](#model-training)
+You can skip the following steps if you want to fine-tune your own VLA/VLM directly; see [Model Training](#model-training).
 
 Download MME-VLA variants [here](https://huggingface.co/Yinpei/mme_vla_suite):
 ```
@@ -175,20 +175,20 @@ This produces the following under `runs`:
 │           └── norm_stats.json
 ```
 
-You can also compare with our computed `norm_stats.json` provided [here](assets/norm_stats.json) to check if you process correctly. Small difference should be acceptable.
+You can also compare with our computed `norm_stats.json` provided [here](assets/norm_stats.json) to check if your processing is correct. A small difference is acceptable.
 
 ### Train π₀.₅ baseline
 This variant uses no history and fine-tunes the $\pi_{0.5}$ checkpoints with the vision encoder frozen (for comparison with MME-VLA):
 ```
 bash scripts/finetune_pi05_baseline.sh
 ```
-
+You can change `--exp-name` to adapt to your own needs.
 
 ### Train MME-VLA policies
 ```
 bash scripts/finetune_mme_vla_suite.sh
 ```
-Set `MME_VLA_TYPE` to train a specific model variant.
+Set `MME_VLA_TYPE` to train a specific model variant. You can change `--exp-name` to adapt to your own needs.
 
 ### Train VLM subgoal predictor
 Download the VLM subgoal prediction [data](https://huggingface.co/datasets/Yinpei/vlm_subgoal_prediction_data), or generate it with `uv run scripts/build_vlm_subgoal_dataset_qwenvl.py` and `uv run scripts/build_vlm_subgoal_dataset_memer.py`.
@@ -212,25 +212,25 @@ Set the `MODEL_TYPE` variable to one of the following:
 3. **Perceptual MME-VLA:** `perceptual-framesamp-context`, `perceptual-framesamp-modul`, `perceptual-framesamp-expert`, `perceptual-tokendrop-context`, `perceptual-tokendrop-modul`, `perceptual-tokendrop-expert`
 4. **Recurrent MME-VLA:** `recurrent-rmt-context`, `recurrent-rmt-modul`, `recurrent-rmt-expert`, `recurrent-ttt-context`, `recurrent-ttt-modul`, `recurrent-ttt-expert`
 
-Running `eval.sh` automatically starts two tmux windows: one for the policy server and one for RoboMME evaluation. If the evaluation is interrupt, you can re run the script it will automaticaly resume from the genereated `progress.json`.
+Running `eval.sh` automatically starts two tmux windows: one for the policy server and one for RoboMME evaluation. If the evaluation is interrupted, you can re-run the script; it will automatically resume from the generated `progress.json`.
 
 
 ### Manual evaluation (per model)
-Details are provided in [here](docs/manual_evaluation.md)
+Details are provided [here](docs/manual_evaluation.md).
 
 
 
-## TroubleShooting
-Q1: Failure about Vulkan Installation.  
-A1: We recommend resintall nvidia driver and vulkan packages, we use nvidia driver 570.211.01 and vulkan 1.3.275.  If still does not work, you can switch into CPU rendering
+## Troubleshooting
+Q1: Failure with Vulkan installation.  
+A1: We recommend reinstalling the NVIDIA driver and Vulkan packages. We use NVIDIA driver 570.211.01 and Vulkan 1.3.275. If it still does not work, you can switch to CPU rendering:
 ```
 os.environ['SAPIEN_RENDER_DEVICE'] = 'cpu'
 os.environ['MUJOCO_GL'] = 'osmesa'
 ```
 
 
-## Ackowledgement 
-This work was supported in part by NSF SES-2128623, NSF CAREER #2337870, NSF NRI #2220876, NSF NAIRR250085. We would also like to thank the wondeful [OpenPi](https://github.com/Physical-Intelligence/openpi/tree/main) codebase from Physical-Intelligence.
+## Acknowledgement
+This work was supported in part by NSF SES-2128623, NSF CAREER #2337870, NSF NRI #2220876, NSF NAIRR250085. We would also like to thank the wonderful [OpenPi](https://github.com/Physical-Intelligence/openpi/tree/main) codebase from Physical-Intelligence.
 
 
 ## Citation
