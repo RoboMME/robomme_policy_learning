@@ -17,11 +17,11 @@
 # set the MODEL_TYPE from the list above according to your needs
 
 #### set your own parameters ####
-MODEL_TYPE="perceptual-framesamp-expert"
-SEED=7          # model seed for evaluation, you can change this into different seeds for multiple runs
-CKPT_ID=79999   # ckpt id for evaluation, you can change this into different checkpoints
-GPU_ID_server=1 # gpu id for server, when set this, the VLA policy server will be run on this gpu
-GPU_ID_client=1 # gpu id for client, when set this, the RoboMME and VLM subgoal predictor will be run on this gpu
+MODEL_TYPE="perceptual-framesamp-modul"
+SEED=7          # model seed for evaluation; change this to use different seeds for multiple runs
+CKPT_ID=79999   # ckpt id for evaluation; change this to use different checkpoints
+GPU_ID_server=1 # gpu id for server; when set, the VLA policy server will run on this GPU
+GPU_ID_client=0 # gpu id for client; when set, the RoboMME environment and/or VLM subgoal predictor will run on this GPU
 #--------------------------------#
 
 
@@ -113,5 +113,5 @@ if [ $? != 0 ]; then
     tmux kill-session -t $session_name 2>/dev/null || true
 
 else
-    echo "Tmux session \"${session_name}\" already exists. change the port"
+    echo "Tmux session ${session_name} already exists. Change the port or use a different session."
 fi
