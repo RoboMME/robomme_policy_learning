@@ -38,6 +38,8 @@ micromamba activate robomme
 python examples/robomme/eval.py --args.model_seed=7 --args.port=8001 --args.policy_name=pi05_baseline --args.model_ckpt_id=79999 --args.no-use-history
 ```
 
+You can change the `seed` and `ckpt_id` to evaluate on different checkpoints and seeds, then gather results with `scripts/compute_results.py`.
+
 
 ## MemER
 MemER can be viewed as a combined use of symbolic and perceptual memory.

@@ -5,7 +5,7 @@
 micromamba create -n robomme python=3.11 -y
 micromamba activate robomme
 pip install -r examples/robomme/requirements.txt 
-pip install -e third_party/robomme
+pip install -e third_party/robomme_benchmark
 pip install -e packages/openpi-client
 pip install flash-attn==2.8.3 --no-build-isolation # Optional, it may take 20-30 min to build, you can always choose 'sdpa' in transformer attn_impl 
 ```

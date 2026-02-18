@@ -25,30 +25,28 @@
 
 ## Updates
 
-- [02/2026] We release MME-VLA Suite, a family of memory-augmented vision-language-action (VLA) models based on the $\pi_{0.5}$ backbone. See our paper for details and analysis.
+- [02/2026] We release MME-VLA Suite, a family of memory-augmented vision-language-action (VLA) models based on the $\pi_{0.5}$ backbone. See our paper for more details and analysis.
 
 
 ## Installation
 
-### Install MME-VLA-Suite Repo
+### Install Policy Learning Repo
 ```
 GIT_LFS_SKIP_SMUDGE=1 uv sync
 GIT_LFS_SKIP_SMUDGE=1 uv pip install -e .
 ```
 
-Set the `OPENPI_DATA_HOME` path in your `~/.bashrc`, e.g. `export OPENPI_DATA_HOME=<your_openpi_homedir>`. For more details, please refer to [openpi](https://github.com/Physical-Intelligence/openpi/tree/main?tab=readme-ov-file#fine-tuned-models).
+Set the `OPENPI_DATA_HOME` path in your `~/.bashrc`, e.g. `export OPENPI_DATA_HOME=<your_openpi_homedir>`. For more details, please refer to [OpenPi](https://github.com/Physical-Intelligence/openpi/tree/main?tab=readme-ov-file#fine-tuned-models).
 
 
 ### Install RoboMME Simulator
-Clone the repo and initialize the RoboMME submodules:
+Clone the RoboMME submodule:
 ```
-git clone git@github.com:RoboMME/MME-VLA-Suite.git
-cd MME-VLA-Suite
 git submodule update --init
 ```
 
-Then install the robomme environment following the documentation [here](examples/robomme/readme.md).
-We use separate environments for VLA training/inference and the RoboMME simulator. During evaluation, we use a WebSocket to connect them, following [openpi](https://github.com/Physical-Intelligence/openpi/tree/main).
+Then install the RoboMME environment following the documentation [here](examples/robomme/readme.md).
+We use separate environments for VLA training/inference and the RoboMME simulator. During evaluation, we use WebSocket to connect them, following [openpi](https://github.com/Physical-Intelligence/openpi/tree/main).
 
 ## Repository Structure
 ```
@@ -58,27 +56,27 @@ We use separate environments for VLA training/inference and the RoboMME simulato
 │   ├── robomme_preprocessed_data       # preprocessed robomme data
 │   └── vlm_subgoal_prediction_data     # subgoal data for VLM prediction, used in symbolic memory
 ├── examples
-│   └── robomme                         # RoboMME simulator codes
+│   └── robomme                         # RoboMME simulator evaluation code
 ├── packages
+│   └── openpi-client                   # VLA client & server interface
 ├── runs
 │   ├── assets                          # save norm_stats json files
 │   ├── ckpts                           # fine-tuned checkpoints
 │   └── evaluation                      # evaluation results
-├── scripts                             # train/eval/data generation scripts
-├── setup_robomme.bash
+├── scripts                             # train/eval/data_generation scripts
 ├── src
 │   ├── mme_vla_suite                   # MME_VLA code, follows openpi structure 
 │   └── openpi                          # original openpi code with minor changes
 └── third_party
 ```
 
+This repo is built on [OpenPi](https://github.com/Physical-Intelligence/openpi/tree/main). We highly recommend getting familiar with OpenPi first before working with this repo.
 
 ## Download
 
 ### Download Training Data
 Place all data under the `data` directory:
 ```
-cd MME-VLA-Suite
 mkdir data && cd data
 ```
 
@@ -118,7 +116,6 @@ git clone git@hf.co:Yinpei/pi05_vision_encoder
 ### Download Fine-tuned VLA/VLM Checkpoints (Optional)
 Fine-tuned models and evaluation results are stored under the `runs` directory. Create it if needed:
 ```
-cd MME-VLA-Suite
 mkdir runs
 mkdir runs/ckpts        # save all trained models here
 mkdir runs/evaluation   # evaluation results
@@ -227,6 +224,9 @@ A1: We recommend reinstalling the NVIDIA driver and Vulkan packages. We use NVID
 os.environ['SAPIEN_RENDER_DEVICE'] = 'cpu'
 os.environ['MUJOCO_GL'] = 'osmesa'
 ```
+
+Q2: Why does the evaluation stop?
+A2: We noticed that sometimes, on long-horizon tasks such as VideoPlaceButton, the WebSocket connection breaks due to large video frames. If the evaluation process is interrupted, you can rerun `scripts/eval.sh`, and the program will resume based on the generated `progress.json`.
 
 
 ## Acknowledgement

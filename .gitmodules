@@ -1,3 +1,3 @@
-[submodule "third_party/robomme"]
-	path = third_party/robomme
-	url = git@github.com:RoboMME/robomme.git
+[submodule "third_party/robomme_benchmark"]
+	path = third_party/robomme_benchmark
+	url = git@github.com:RoboMME/robomme_benchmark.git

@@ -74,7 +74,7 @@ class DatasetBuilder:
             print(f"\nprocessing file: {file}")
             data = h5py.File(os.path.join(h5_data_dir, file), "r")
             env_id = file.split(".")[0].split("_")[-1]
-            for episode_idx in range(1):
+            for episode_idx in range(100):
                 self.process_per_episode(data, env_id, episode_idx)
 
     # -------------------------------------------------------------------------
