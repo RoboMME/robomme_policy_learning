@@ -1,6 +1,6 @@
 budget: 512         # total tokens for the memory representation
 num_views: 1        # number of camera views, only use fixed views
-token_per_image: 64  # default num of tokens per image, if larger then use pooling 
+token_per_image: 64  # num of tokens per image
 streaming_obs_horizon: 16  # input horizon for memory encoder
 
 pool_type: mean
@@ -29,14 +29,6 @@ representation_type: perceptual # [perceptual, recurrent, symbolic]
 perceptual_memory:
   budget: ${budget}
   type: frame_sampling # [frame_sampling, token_dropping]
-
-  # token sampling parameters
-  frame_sampling:
-    type: fast
-    fast_token_per_image: 4
-    mid_token_per_image: 16
-    slow_token_per_image: 64
-
 
 recurrent_memory:
   budget: ${budget}
