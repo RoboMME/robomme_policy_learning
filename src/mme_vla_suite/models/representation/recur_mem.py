@@ -24,7 +24,7 @@ class RecurrentMemory(nnx.Module):
         self.hidden_dim = self.cfg.recurrent_memory.hidden_dim
         self.output_dim = self.cfg.memory_token_dim
         self.recur_type = self.cfg.recurrent_memory.type
-        self.budget = self.cfg.recurrent_memory.budget
+        self.budget = self.cfg.budget
 
         self.feature_encoder = FeatureEncoder(
             rngs=rngs,

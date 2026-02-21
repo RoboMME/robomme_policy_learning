@@ -23,7 +23,7 @@ class RMTLayer(nnx.Module):
         rngs: nnx.Rngs,
     ):
         self.config = config
-        self.mem_slots = config.recurrent_memory.budget
+        self.mem_slots = config.budget
         self.hidden_dim = config.recurrent_memory.hidden_dim
         self.num_heads = config.recurrent_memory.rmt_config.num_attn_heads
         self.num_kv_heads = config.recurrent_memory.rmt_config.num_kv_heads

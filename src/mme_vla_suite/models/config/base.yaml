@@ -1,6 +1,6 @@
 budget: 512         # total tokens for the memory representation
 num_views: 1        # number of camera views, only use fixed views
-token_per_image: 64  # num of tokens per image
+token_per_image: 64  # defaultnum of tokens per image, only the frame sampling method use 16 tokens.
 streaming_obs_horizon: 16  # input horizon for memory encoder
 
 pool_type: mean

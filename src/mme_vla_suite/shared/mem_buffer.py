@@ -22,6 +22,7 @@ def create_dict(indices):
 
 
 class MemoryBuffer:
+    # We use 8x8 tokens each image for token dropping and 4x4 tokens for frame sampling.
     def __init__(
         self,
         num_views: int = 1,  # number of camera views to be used as memory, better use fixed-views
@@ -344,6 +345,7 @@ class MemoryBuffer:
 
 
 class MemoryBufferRecurrent(MemoryBuffer):
+    # By default, we use 8x8 tokens each image for recurrent memory.
     def __init__(
         self,
         input_obs_horizon: int = 8, 

@@ -31,14 +31,14 @@
 ## π₀.₅ baseline
 ```
 # terminal 0
-uv run scripts/serve_policy.py --seed=7  --port=8001 policy:checkpoint --policy.dir=runs/ckpts/pi05_baseline/pi05_baseline/79999 --policy.config=pi05_baseline
+uv run scripts/serve_policy.py --seed=7 --port=8001 policy:checkpoint --policy.dir=runs/ckpts/pi05_baseline/pi05_baseline/79999 --policy.config=pi05_baseline
 
 # terminal 1 
 micromamba activate robomme
 python examples/robomme/eval.py --args.model_seed=7 --args.port=8001 --args.policy_name=pi05_baseline --args.model_ckpt_id=79999 --args.no-use-history
 ```
 
-You can change the `seed` and `ckpt_id` to evaluate on different checkpoints and seeds, then gather results with `scripts/compute_results.py`.
+You can change the `--policy.dir` to load different ckpts, change the  `seed` and `ckpt_id` to evaluate on different checkpoints and seeds, then gather results with `scripts/compute_results.py`.
 
 
 ## MemER
