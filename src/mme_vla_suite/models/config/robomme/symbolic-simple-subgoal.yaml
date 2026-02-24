@@ -1,4 +1,4 @@
-budget: 0
+budget: 512
 num_views: 1
 token_per_image: 64
 streaming_obs_horizon: 16
@@ -18,37 +18,5 @@ memory_feature:
 integration_type: context
 memory_token_dim: 2048
 representation_type: symbolic
-perceptual_memory:
-  budget: 0
-  type: frame_sampling
-  frame_sampling:
-    type: fast
-    fast_token_per_image: 4
-    mid_token_per_image: 16
-    slow_token_per_image: 64
-  token_per_image: 4
-recurrent_memory:
-  budget: 0
-  type: ttt
-  hidden_dim: 512
-  remat_n_mini_batches: 4
-  output_stats: true
-  max_recur_steps: 64
-  max_pretraj_steps: 40
-  ttt_config:
-    ttt_type: linear
-    num_ttt_heads: 2
-    base_lr: 0.01
-    max_lr: 0.1
-    qk_norm: true
-    v_norm: true
-    max_grad_norm: 5.0
-    remat_n_mini_batches: 4
-  rmt_config:
-    num_attn_heads: 8
-    num_kv_heads: 1
-  max_input_tokens: 4096
-  mini_batch_size: 64
 symbolic_memory:
-  budget: 0
   type: simple_subgoal

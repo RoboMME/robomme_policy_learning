@@ -34,7 +34,7 @@ class TTTBase(nnx.Module):
         self.num_heads = config.recurrent_memory.ttt_config.num_ttt_heads
         self.head_dim = self.hidden_dim // self.num_heads
         self.mini_batch_size = config.recurrent_memory.mini_batch_size
-        self.mem_slots = config.recurrent_memory.budget
+        self.mem_slots = config.budget
 
         self.output_stats = config.recurrent_memory.output_stats
 

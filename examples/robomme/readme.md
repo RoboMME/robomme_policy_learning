@@ -1,6 +1,7 @@
 # RoboMME Evaluation
 
 ## Install
+We recommend use [micromamba](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html) for robomme evaluation and VLM subgoal predictor training.
 ```
 micromamba create -n robomme python=3.11 -y
 micromamba activate robomme

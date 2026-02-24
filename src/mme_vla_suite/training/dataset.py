@@ -78,7 +78,7 @@ class RoboMMEDataset(Dataset):
                     img_emb_dim=self.img_emb_dim,
                     pos_emb_dim=self.pos_emb_dim,
                     state_emb_dim=self.state_emb_dim,
-                    input_horizon=self.streaming_obs_horizon,
+                    input_obs_horizon=self.streaming_obs_horizon,
                     max_recur_steps=self.history_config.recurrent_memory.max_recur_steps,
                     max_video_steps=self.history_config.recurrent_memory.max_pretraj_steps,
                 )
@@ -123,7 +123,7 @@ class RoboMMEDataset(Dataset):
     
     
     def prepare_token_drop(self, epis_idx, step_idx):
-        token_budget = self.history_config.perceptual_memory.budget
+        token_budget = self.history_config.budget
         kept_indices = json.load(open(os.path.join(self.feature_dir, f"episode_{epis_idx}", "kept_indices.json")))
         
         return self.mem_buffer.prepare_token_dropping(
@@ -132,8 +132,8 @@ class RoboMMEDataset(Dataset):
         
 
     def prepare_frame_sampling(self,  epis_idx,  step_idx):
-        token_per_image = self.history_config.perceptual_memory.token_per_image
-        token_budget = self.history_config.perceptual_memory.budget
+        token_per_image = self.history_config.token_per_image
+        token_budget = self.history_config.budget
 
         return self.mem_buffer.prepare_frame_sampling(
             step_idx, token_budget, token_per_image, self._gather_history_feat, 

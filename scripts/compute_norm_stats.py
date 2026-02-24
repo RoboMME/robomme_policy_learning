@@ -62,7 +62,7 @@ def main(config_name: str = "mme_vla_suite", repo_id: str = "robomme", dataset_p
     config = _config.get_config(config_name)
     config = dataclasses.replace(config, data=dataclasses.replace(config.data, repo_id=repo_id))
     data_config = config.data.create(config.assets_dirs, config.model)
-    
+        
     data_loader, num_batches = create_data_loader(
         dataset_path=dataset_path,
         data_config=data_config,

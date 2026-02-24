@@ -141,14 +141,14 @@ class MME_VLA_Policy:
             inputs["recur_mask"] = recur_mask
         elif self.config.representation_type == "perceptual":
             history_feats_gather_fn = self.mem_buffer.default_history_feats_gather_fn
-            token_budget = self.config.perceptual_memory.budget
+            token_budget = self.config.budget
             
             if self.config.perceptual_memory.type == "token_dropping":
                 static_image_emb, static_pos_emb, static_state_emb, static_mask = \
                     self.mem_buffer.prepare_token_dropping(
                         self.step_idx, token_budget, history_feats_gather_fn)
             else:
-                token_per_image = self.config.perceptual_memory.token_per_image
+                token_per_image = self.config.token_per_image
                 static_image_emb, static_pos_emb, static_state_emb, static_mask = \
                     self.mem_buffer.prepare_frame_sampling(
                         self.step_idx, token_budget, token_per_image, history_feats_gather_fn)

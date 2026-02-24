@@ -17,7 +17,7 @@
 # set the MODEL_TYPE from the list above according to your needs
 
 #### set your own parameters ####
-MODEL_TYPE="perceptual-framesamp-modul"
+MODEL_TYPE="symbolic_groundedSG_qwenvl"
 SEED=7          # model seed for evaluation; change this to use different seeds for multiple runs
 CKPT_ID=79999   # ckpt id for evaluation; change this to use different checkpoints
 GPU_ID_server=1 # gpu id for server; when set, the VLA policy server will run on this GPU

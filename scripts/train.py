@@ -431,7 +431,7 @@ def main(config: _config.TrainConfig, tentative_run: bool = False):
             reduced_info = jax.device_get(jax.tree.map(jnp.mean, stacked_infos))
 
             if (
-                config.model.use_history
+                config.model.use_history and history_config.representation_type == "recurrent"
                 and history_config.recurrent_memory.output_stats
             ):
                 stats = jax.device_get(stats)

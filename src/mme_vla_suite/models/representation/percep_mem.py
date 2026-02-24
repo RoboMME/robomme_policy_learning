@@ -34,7 +34,7 @@ class PerceptualMemory(nnx.Module):
         static_state_emb: at.Float[at.Array, "b l d3"],
     ):
         # get memory tokens using feature encoder
-        assert static_image_emb.shape[1] == self.config.perceptual_memory.budget
+        assert static_image_emb.shape[1] == self.config.budget
 
         hidden_states = self.feature_encoder.encode_perceptual_memory(
             static_image_emb, static_pos_emb, static_state_emb

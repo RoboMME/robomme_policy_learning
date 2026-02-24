@@ -127,19 +127,19 @@ class HistoryPi0Config(Pi0Config):
                         static_image_emb=jax.ShapeDtypeStruct(
                             [
                                 batch_size,
-                                self.history_config.perceptual_memory.budget,
+                                self.history_config.budget,
                                 self.history_config.memory_feature.img.input_dim,
                             ],
                             jnp.float32,
                         ),
                         static_mask=jax.ShapeDtypeStruct(
-                            [batch_size, self.history_config.perceptual_memory.budget],
+                            [batch_size, self.history_config.budget],
                             jnp.bool_,
                         ),
                         static_pos_emb=jax.ShapeDtypeStruct(
                             [
                                 batch_size,
-                                self.history_config.perceptual_memory.budget,
+                                self.history_config.budget,
                                 self.history_config.memory_feature.pos.input_dim,
                             ],
                             jnp.float32,
@@ -147,7 +147,7 @@ class HistoryPi0Config(Pi0Config):
                         static_state_emb=jax.ShapeDtypeStruct(
                             [
                                 batch_size,
-                                self.history_config.perceptual_memory.budget,
+                                self.history_config.budget,
                                 self.history_config.memory_feature.state.input_dim,
                             ],
                             jnp.float32,
