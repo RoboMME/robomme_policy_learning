@@ -55,7 +55,7 @@ We use separate environments for VLA training/inference and the RoboMME simulato
 │   ├── robomme_h5_data                 # download robomme raw h5 files here
 │   └── robomme_preprocessed_data
 │   │   ├── data                        # pickle files
-│   │   ├── features                    # precompute sigclip token cache
+│   │   ├── features                    # precompute siglip token embeddings
 │   │   ├── meta                        # statistics for robomme
 │   │   ├── memer                       # VLM subgoal training data for MemER
 │   │   └── qwenvl                      # VLM subgoal training data for QwenVL
@@ -84,9 +84,9 @@ Place all data under the `data` directory:
 mkdir data && cd data
 ```
 
-Download the raw RoboMME training files [here](https://huggingface.co/datasets/Yinpei/robomme_data_h5):
+Download the raw RoboMME training files [here](https://huggingface.co/Yinpei/robomme_data_h5):
 ```
-git clone git@hf.co:datasets/Yinpei/robomme_data_h5 data/robomme_data_h5
+git clone git@hf.co:Yinpei/robomme_data_h5 data/robomme_data_h5
 ```
 
 **(Optional)** Download preprocessed RoboMME data [here](https://huggingface.co/datasets/Yinpei/robomme_preprocessed_data):
@@ -95,7 +95,7 @@ git clone git@hf.co:datasets/Yinpei/robomme_preprocessed_data data/robomme_prepr
 ```
 and run `uv run scripts/unzip_data.py data/robomme_preprocessed_data` to unzip the files.  
 
-Alternatively, you can run `uv run scripts/build_dataset.py` to generate the preprocessed pickle files  (takes about 2–3 hours) and/or VLM subgoal predictor training data  (takes about 30 minutes).   
+Alternatively, you can run `uv run scripts/build_dataset.py` to generate the preprocessed pickle files  (takes about 2–3 hours) and/or VLM subgoal predictor training data  (takes about 30-60 minutes).   
 
 We also provide data in LeRobot format [here](https://huggingface.co/datasets/Yinpei/robomme_data_lerobot). In our experiments, however, the LeRobot dataloader significantly increased CPU memory usage during training, which can be a bottleneck in shared training environments (e.g. on HPC). For this reason, we use our custom data format and [dataloader](https://github.com/RoboMME/robomme_policy_learning/blob/89efeaab461cc2b00ede344edf4283692e9c3ada/src/mme_vla_suite/training/dataset.py#L42) in this repository. 
 
@@ -150,7 +150,10 @@ to unzip all of them.
 ### Data Preparation
 Prepare training data by either downloading [preprocessed files](https://huggingface.co/datasets/Yinpei/robomme_preprocessed_data) or running:
 ```
-uv run scripts/build_robomme_dataset.py --raw_data_path="data/robomme_h5_data" --preprocessed_data_path="data/robomme_preprocessed_data"
+uv run scripts/build_robomme_dataset.py   --dataset_type robomme_pkl  --raw_data_path=<downloaded_h5_data_dir> --preprocessed_data_path=<your_target_dir>
+
+uv run scripts/build_robomme_dataset.py  --dataset_type vlm_subgoal_qwenvl  --raw_data_path=<downloaded_h5_data_dir> --preprocessed_data_path=<your_target_dir>
+
 ```
 
 Then compute normalization statistics (takes about 3 minutes):
@@ -186,7 +189,9 @@ bash scripts/finetune_mme_vla_suite.sh
 Set `MME_VLA_TYPE` to train a specific model variant. You can change `--exp-name` to adapt to your own needs.
 
 ### Train VLM subgoal predictor
-Download the VLM subgoal prediction [data](https://huggingface.co/datasets/Yinpei/vlm_subgoal_prediction_data), or generate it with `uv run scripts/build_vlm_subgoal_dataset_qwenvl.py` and `uv run scripts/build_vlm_subgoal_dataset_memer.py`.
+[robomme_preprocessed_data](https://huggingface.co/datasets/Yinpei/robomme_preprocessed_data) already contains VLM subgoal prediction data, you can also generate it with `uv run scripts/build_robomme_dataset.py  --dataset_type vlm_subgoal_qwenvl` and `uv run scripts/build_robomme_dataset.py  --dataset_type vlm_subgoal_memer`.
+
+After data is ready, run
 
 ```
 bash scripts/finetune_vlm_subgoal_predictor.sh
