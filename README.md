@@ -25,7 +25,7 @@
 
 ## Updates
 
-- [03/2026] 🚀 We release MME-VLA Suite, a family of memory-augmented vision-language-action (VLA) models based on the $\pi_{0.5}$ backbone. See our paper for more details and analysis.
+- [03/2026] 🚀 We release MME-VLA Suite, a family of memory-augmented vision-language-action (VLA) models based on the $\pi_{0.5}$ backbone. See our [paper](https://arxiv.org/abs/2603.04639) and [leaderboard](https://robomme.github.io/leaderboard.html) for more details and analysis.
 
 
 ## Installation
@@ -148,12 +148,9 @@ to unzip all of them.
 ## Model Training
 
 ### Data Preparation
-Prepare training data by either downloading [preprocessed files](https://huggingface.co/datasets/Yinpei/robomme_preprocessed_data) or running:
+Prepare training data by either downloading [preprocessed files](https://huggingface.co/datasets/Yinpei/robomme_preprocessed_data) or run:
 ```
 uv run scripts/build_robomme_dataset.py   --dataset_type robomme_pkl  --raw_data_path=<downloaded_h5_data_dir> --preprocessed_data_path=<your_target_dir>
-
-uv run scripts/build_robomme_dataset.py  --dataset_type vlm_subgoal_qwenvl  --raw_data_path=<downloaded_h5_data_dir> --preprocessed_data_path=<your_target_dir>
-
 ```
 
 Then compute normalization statistics (takes about 3 minutes):
@@ -189,11 +186,15 @@ bash scripts/finetune_mme_vla_suite.sh
 Set `MME_VLA_TYPE` to train a specific model variant. You can change `--exp-name` to adapt to your own needs.
 
 ### Train VLM subgoal predictor
-[robomme_preprocessed_data](https://huggingface.co/datasets/Yinpei/robomme_preprocessed_data) already contains VLM subgoal prediction data, you can also generate it with `uv run scripts/build_robomme_dataset.py  --dataset_type vlm_subgoal_qwenvl` and `uv run scripts/build_robomme_dataset.py  --dataset_type vlm_subgoal_memer`.
+[robomme_preprocessed_data](https://huggingface.co/datasets/Yinpei/robomme_preprocessed_data) already contains VLM subgoal prediction data, you can also generate it with 
+```
+uv run scripts/build_robomme_dataset.py  --dataset_type vlm_subgoal_qwenvl  --raw_data_path=<downloaded_h5_data_dir> --preprocessed_data_path=<your_target_dir>
+uv run scripts/build_robomme_dataset.py  --dataset_type vlm_subgoal_memer  --raw_data_path=<downloaded_h5_data_dir> --preprocessed_data_path=<your_target_dir>
+```
 
 After data is ready, run
-
 ```
+micromamba activate robomme 
 bash scripts/finetune_vlm_subgoal_predictor.sh
 ```
 Set `DATASET_PATH` according to which VLM you are training: (1) simple subgoals, (2) grounded subgoals, or (3) MemER-style subgoals.
@@ -232,14 +233,19 @@ Q2: Why does the evaluation stop?
 A2: We noticed that sometimes, on long-horizon tasks such as VideoPlaceButton, the WebSocket connection breaks due to large video frames. If the evaluation process is interrupted, you can rerun `scripts/eval.sh`, and the program will resume based on the generated `progress.json`.
 
 Q3: CUDA out of memory when training VLA models.
-A3: You can set `export XLA_PYTHON_CLIENT_MEM_FRACTION=0.95` to utilize more GPU memory for JAX.
+A3: You can set environment variable `XLA_PYTHON_CLIENT_MEM_FRACTION=0.95` to utilize more GPU memory for JAX.
 
 ## Acknowledgement
-This work was supported in part by NSF SES-2128623, NSF CAREER #2337870, NSF NRI #2220876, NSF NAIRR250085. We would also like to thank the wonderful [OpenPi](https://github.com/Physical-Intelligence/openpi/tree/main) codebase from Physical-Intelligence.
+This work was supported in part by NSF SES-2128623, NSF CAREER #2337870, NSF NRI #2220876, NSF NAIRR250085, NSF IIS-1949634. We would also like to thank the wonderful [OpenPi](https://github.com/Physical-Intelligence/openpi/tree/main) codebase from Physical-Intelligence.
 
 
 ## Citation
 
 ```
-...
+@article{dai2026robomme,
+  title={RoboMME: Benchmarking and Understanding Memory for Robotic Generalist Policies},
+  author={Dai, Yinpei and Fu, Hongze and Lee, Jayjun and Zhang, Haoran and Yang, Jianing and Finn, Chelsea and Fazeli, Nima and Chai, Joyce},
+  journal={arXiv preprint arXiv:2603.04639},
+  year={2026}
+}
 ```

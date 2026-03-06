@@ -43,11 +43,11 @@ MemER can be viewed as a combined use of symbolic and perceptual memory.
 
 ```
 # terminal 0
-uv run scripts/serve_policy.py --seed=7  --port=8002 policy:checkpoint --policy.dir=runs/ckpts/mme_vla_suite/symbolic-grounded-subgoal/79999 --policy.config=mme_vla_suite
+CUDA_VISIBLE_DEVICES=0 uv run scripts/serve_policy.py --seed=7  --port=8002 policy:checkpoint --policy.dir=runs/ckpts/mme_vla_suite/symbolic-grounded-subgoal/79999 --policy.config=mme_vla_suite
 
 # terminal 1 
 micromamba activate robomme
-python examples/robomme/eval.py --args.model_seed=7 --args.port=8002 --args.policy_name=symbolic-grounded-subgoal --args.model_ckpt_id=79999  --args.subgoal-type=grounded_subgoal --args.use-memer 
+CUDA_VISIBLE_DEVICES=1 python examples/robomme/eval.py --args.model_seed=7 --args.port=8002 --args.policy_name=symbolic-grounded-subgoal --args.model_ckpt_id=79999  --args.subgoal-type=grounded_subgoal --args.use-memer 
 ```
 
 
@@ -66,11 +66,11 @@ python examples/robomme/eval.py --args.model_seed=7 --args.port=8003 --args.poli
 ### SimpleSG + QwenVL
 ```
 # terminal 0
-uv run scripts/serve_policy.py --seed=7  --port=8004 policy:checkpoint --policy.dir=runs/ckpts/mme_vla_suite/symbolic-simple-subgoal/79999 --policy.config=mme_vla_suite
+CUDA_VISIBLE_DEVICES=0 uv run scripts/serve_policy.py --seed=7  --port=8004 policy:checkpoint --policy.dir=runs/ckpts/mme_vla_suite/symbolic-simple-subgoal/79999 --policy.config=mme_vla_suite
 
 # terminal 1 
 micromamba activate robomme
-python examples/robomme/eval.py --args.model_seed=7 --args.port=8004 --args.policy_name=symbolic-simple-subgoal --args.model_ckpt_id=79999  --args.subgoal-type=simple_subgoal --args.use-qwenvl 
+CUDA_VISIBLE_DEVICES=1 python examples/robomme/eval.py --args.model_seed=7 --args.port=8004 --args.policy_name=symbolic-simple-subgoal --args.model_ckpt_id=79999  --args.subgoal-type=simple_subgoal --args.use-qwenvl 
 ```
 
 ### SimpleSG + Gemini
@@ -97,11 +97,11 @@ python examples/robomme/eval.py --args.model_seed=7 --args.port=8006 --args.poli
 ### GroundSG + QwenVL
 ```
 # terminal 0
-uv run scripts/serve_policy.py --seed=7  --port=8007 policy:checkpoint --policy.dir=runs/ckpts/mme_vla_suite/symbolic-grounded-subgoal/79999 --policy.config=mme_vla_suite
+CUDA_VISIBLE_DEVICES=0 uv run scripts/serve_policy.py --seed=7  --port=8007 policy:checkpoint --policy.dir=runs/ckpts/mme_vla_suite/symbolic-grounded-subgoal/79999 --policy.config=mme_vla_suite
 
 # terminal 1 
 micromamba activate robomme
-python examples/robomme/eval.py --args.model_seed=7 --args.port=8007 --args.policy_name=symbolic-grounded-subgoal --args.model_ckpt_id=79999  --args.subgoal-type=grounded_subgoal --args.use-qwenvl 
+CUDA_VISIBLE_DEVICES=1 python examples/robomme/eval.py --args.model_seed=7 --args.port=8007 --args.policy_name=symbolic-grounded-subgoal --args.model_ckpt_id=79999  --args.subgoal-type=grounded_subgoal --args.use-qwenvl 
 ```
 
 ### GroundSG + Gemini

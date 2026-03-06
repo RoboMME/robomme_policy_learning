@@ -467,9 +467,7 @@ def main(config: _config.TrainConfig, tentative_run: bool = False):
             data_iter = iter(data_loader)
             time.sleep(3)
 
-        tstate = time.time()
         batch = next(data_iter)
-        print(f"Time taken to get next batch: {time.time() - tstate}")
 
         if tentative_run and step > tentative_run_step:
             # this is very important! it can accelerate the training process on A40
