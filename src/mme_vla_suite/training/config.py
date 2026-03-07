@@ -579,7 +579,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             os.path.join(OPENPI_DATA_HOME, "openpi-assets/checkpoints/pi05_base/params"),
         ),
-        num_train_steps=50_000, 
+        num_train_steps=80_000, 
         save_interval=10_000,
         keep_period=10_000,
         num_workers=4,
