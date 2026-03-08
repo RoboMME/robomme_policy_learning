@@ -105,7 +105,7 @@ Download the $\pi_{0.5}$-base backbone:
 ```
 uv run scripts/download_pi05_base.py
 ```
-Download the [pi05_vision_encoder](https://huggingface.co/Yinpei/pi05_vision_encoder), which is a subset of the $\pi_{0.5}$ parameters used for dataset feature construction without loading the full model. Visual token embeddings are computed and cached for training, and the vision encoder remains frozen:
+Download the [pi05_vision_encoder](https://huggingface.co/Yinpei/pi05_vision_encoder), which is a subset of the $\pi_{0.5}$ parameters used for dataset feature construction without loading the full model. Visual token embeddings are computed and cached for training, and the vision encoder remains frozen in our experiment:
 ```
 cd $OPENPI_DATA_HOME
 git clone git@hf.co:Yinpei/pi05_vision_encoder

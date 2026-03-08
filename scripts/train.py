@@ -401,7 +401,7 @@ def main(config: _config.TrainConfig, tentative_run: bool = False):
     )
 
     start_step = int(train_state.step)
-    tentative_run_step = 10 # on our cluster, we need to run the tentative run for a few steps to warm up the machine. 
+    tentative_run_step = 10 # on our cluster, we need to run the tentative run for a few steps to warm up the A40 machine. 
     # Otherwise it would be very slow. I guess it is because of JAX compilation cache.
     
     if config.resum_ckpt_id is not None:
@@ -441,7 +441,6 @@ def main(config: _config.TrainConfig, tentative_run: bool = False):
         batch = next(data_iter)
 
         if tentative_run and step > tentative_run_step:
-            # this is very important! it can accelerate the training process on A40
             print("\n\n\n==========Tentative run completed==========\n\n\n")
             break
 
