@@ -108,7 +108,7 @@ XLA_PYTHON_CLIENT_MEM_FRACTION=0.95 uv run scripts/train.py mme_vla_suite \
 --model.history_config="${MME_VLA_TYPE}.yaml"
 ```
 
-All possible configs can be found in `src/mme_vla_suite/models/config/robomme`
+History presets (formerly `robomme/*.yaml`) are defined as dataclasses in `src/mme_vla_suite/models/config/presets.py` (`HISTORY_CONFIG_PRESETS`).
 
 
 ## 🗂️ Repository Structure

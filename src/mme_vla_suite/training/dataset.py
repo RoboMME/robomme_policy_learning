@@ -2,7 +2,6 @@ import os
 import json
 import logging
 import numpy as np
-from omegaconf import DictConfig
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import random
@@ -10,11 +9,86 @@ import re
 
 from openpi.training import config as _config
 from openpi.training.data_loader import Dataset
+from mme_vla_suite.models.config.schema import HistoryConfig, PastFramesConfig
 from mme_vla_suite.shared.mem_buffer import MemoryBuffer, MemoryBufferRecurrent
 import pickle
 
 random.seed(0)
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Episode cache — mmap-friendly per-episode npy arrays built by
+# ``scripts/build_episode_cache.py``.
+# ---------------------------------------------------------------------------
+
+class EpisodeCache:
+    """Lazy-loading, mmap-backed per-episode arrays.
+
+    Produced by ``scripts/build_episode_cache.py``.  Structure on disk::
+
+        episode_cache/episode_{E}/images.npy
+                                  wrist_images.npy
+                                  states.npy
+                                  actions.npy
+                                  meta.json   # step_to_local / local_to_step
+    """
+
+    def __init__(self, cache_root: Path):
+        self._root = cache_root
+        self._meta: dict[int, dict] = {}
+        self._arrays: dict[int, dict[str, np.ndarray]] = {}
+
+    @property
+    def available(self) -> bool:
+        return self._root.is_dir()
+
+    def _ensure_episode(self, epis_idx: int) -> None:
+        if epis_idx in self._meta:
+            return
+        ep_dir = self._root / f"episode_{epis_idx}"
+        with open(ep_dir / "meta.json", encoding="utf-8") as f:
+            self._meta[epis_idx] = json.load(f)
+        self._arrays[epis_idx] = {
+            "images": np.load(ep_dir / "images.npy", mmap_mode="r"),
+            "wrist_images": np.load(ep_dir / "wrist_images.npy", mmap_mode="r"),
+            "states": np.load(ep_dir / "states.npy", mmap_mode="r"),
+            "actions": np.load(ep_dir / "actions.npy", mmap_mode="r"),
+        }
+
+    def get(
+        self, epis_idx: int, step_idx: int, action_horizon: int,
+    ) -> dict[str, np.ndarray] | None:
+        """Return (image, wrist_image, state, actions) for one step, or *None* if missing."""
+        self._ensure_episode(epis_idx)
+        local = self._meta[epis_idx]["step_to_local"].get(str(step_idx))
+        if local is None:
+            return None
+        arrs = self._arrays[epis_idx]
+        return {
+            "image": np.array(arrs["images"][local]),
+            "wrist_image": np.array(arrs["wrist_images"][local]),
+            "state": np.array(arrs["states"][local], dtype=np.float32),
+            "actions": np.array(arrs["actions"][local][:action_horizon], dtype=np.float32),
+        }
+
+
+def load_episode_step_index(dataset_path: str | Path) -> dict[tuple[int, int], int]:
+    """Load ``meta/episode_step_to_sample_idx.json`` built by ``scripts/build_episode_step_index.py``."""
+    path = Path(dataset_path) / "meta" / "episode_step_to_sample_idx.json"
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"Missing {path}; run: uv run scripts/build_episode_step_index.py {dataset_path}"
+        )
+    with open(path, encoding="utf-8") as f:
+        raw: dict[str, int] = json.load(f)
+    out: dict[tuple[int, int], int] = {}
+    for k, v in raw.items():
+        parts = k.split("_", 1)
+        if len(parts) != 2:
+            raise ValueError(f"Bad key in episode_step index: {k!r}")
+        out[(int(parts[0]), int(parts[1]))] = int(v)
+    return out
 
 
 def load_vector_file(vector_path: str, step_idx: int) -> tuple[dict, int]:
@@ -44,15 +118,28 @@ class RoboMMEDataset(Dataset):
         self,
         dataset_path: str,
         data_config: _config.DataConfig,
-        history_config: DictConfig | None,
+        history_config: HistoryConfig | None,
         action_horizon: int,
         compute_norm_stats: bool = False,
+        past_frames_config: PastFramesConfig | None = None,
     ):
         self.history_config = history_config
-        
-        
+        self.past_frames_config = past_frames_config
+
         self.action_horizon = action_horizon
         self.dataset = SampleDataset(dataset_path)
+
+        self._episode_cache: EpisodeCache | None = None
+        self._epis_step_to_idx: dict[tuple[int, int], int] | None = None
+        if past_frames_config is not None:
+            cache = EpisodeCache(Path(self.dataset.dataset_path) / "episode_cache")
+            if cache.available:
+                self._episode_cache = cache
+                logger.info("Using mmap episode cache for past frames")
+            else:
+                self._epis_step_to_idx = load_episode_step_index(self.dataset.dataset_path)
+                logger.info("Episode cache not found — falling back to per-pkl loading")
+
         self.feature_dir = Path(self.dataset.dataset_path) / "features"
 
         if self.history_config is not None:
@@ -185,7 +272,67 @@ class RoboMMEDataset(Dataset):
 
         new_subgoal = subgoal.replace(f'at <{x}, {y}>', f'at <{x + noise_x}, {y + noise_y}>')
         return new_subgoal
-        
+
+    def _gather_past_frames(self, data: dict) -> dict[str, np.ndarray]:
+        """Load N past steps at stride (see ``PastFramesConfig``).
+
+        Uses the mmap episode cache when available, otherwise falls back to
+        per-pkl loading (slower).  Pads with zeros where the step doesn't exist.
+        """
+        cfg = self.past_frames_config
+        assert cfg is not None
+        epis_idx = int(data["epis_idx"].item())
+        step_idx = int(data["step_idx"].item())
+        N = cfg.num_past
+        stride = cfg.stride
+
+        img_ref = np.asarray(data["image"])
+        wrist_ref = np.asarray(data["wrist_image"])
+        state_ref = np.asarray(data["state"])
+        act_ref = np.asarray(data["actions"])
+
+        past_image = np.zeros((N, *img_ref.shape), dtype=img_ref.dtype)
+        past_wrist = np.zeros((N, *wrist_ref.shape), dtype=wrist_ref.dtype)
+        past_state = np.zeros((N,) + state_ref.shape, dtype=np.float32)
+        past_actions = np.zeros((N,) + act_ref.shape, dtype=act_ref.dtype)
+        mask = np.zeros((N,), dtype=np.bool_)
+
+        use_cache = self._episode_cache is not None
+        data_root = Path(self.dataset.dataset_path) / "data" if not use_cache else None
+
+        for i in range(N):
+            t = step_idx - (i + 1) * stride
+            if use_cache:
+                past = self._episode_cache.get(epis_idx, t, self.action_horizon)
+            else:
+                sample_idx = self._epis_step_to_idx.get((epis_idx, t))
+                if sample_idx is None:
+                    past = None
+                else:
+                    pkl_path = data_root / f"{sample_idx}.pkl"
+                    with open(pkl_path, "rb") as f:
+                        raw = pickle.load(f)
+                    past = {
+                        "image": raw["image"],
+                        "wrist_image": raw["wrist_image"],
+                        "state": np.asarray(raw["state"], dtype=np.float32),
+                        "actions": np.asarray(raw["actions"])[:self.action_horizon],
+                    }
+            if past is None:
+                continue
+            past_image[i] = past["image"]
+            past_wrist[i] = past["wrist_image"]
+            past_state[i] = past["state"]
+            past_actions[i] = past["actions"]
+            mask[i] = True
+
+        return {
+            "past_image": past_image,
+            "past_wrist_image": past_wrist,
+            "past_state": past_state,
+            "past_actions": past_actions,
+            "past_frame_mask": mask,
+        }
 
     def __getitem__(self, idx):
         data = self.dataset[idx]
@@ -203,6 +350,9 @@ class RoboMMEDataset(Dataset):
             data["grounded_subgoal"] = data["grounded_subgoal_online"]
         data.pop("simple_subgoal_online")
         data.pop("grounded_subgoal_online")
+
+        if self.past_frames_config is not None:
+            data.update(self._gather_past_frames(data))
         
         if self.history_config is not None and self.history_config.representation_type == "symbolic":
             data["grounded_subgoal"] = self.add_grounding_augmentation(data["grounded_subgoal"], noise_range=8)

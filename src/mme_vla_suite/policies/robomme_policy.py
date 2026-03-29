@@ -2,6 +2,7 @@ import dataclasses
 
 import einops
 import numpy as np
+from openpi_client import image_tools
 
 from openpi import transforms
 from openpi.models import model as _model
@@ -39,6 +40,8 @@ class RoboMMEInputs(transforms.DataTransformFn):
     # Determines which model will be used.
     # Do not change this for your own dataset.
     model_type: _model.ModelType
+    # When True, pass through optional ``past_*`` keys from ``RoboMMEDataConfig(past_frames=...)``.
+    past_frames: bool = False
 
     def __call__(self, data: dict) -> dict:
         base_image = _parse_image(data["observation/image"])
@@ -84,6 +87,37 @@ class RoboMMEInputs(transforms.DataTransformFn):
         # stored in "prompt"; the output dict always needs to have the key "prompt").
         if "prompt" in data:
             inputs["prompt"] = data["prompt"]
+
+        if self.past_frames:
+            # Match ``ResizeImages(224, 224)`` on the main views (runs later in model transforms).
+            _res = 224
+            pi = data.get("past_observation/image")
+            if pi is not None and np.asarray(pi).size > 0:
+                pi = np.asarray(pi)
+                inputs["past_image"] = np.stack(
+                    [
+                        image_tools.resize_with_pad(_parse_image(pi[i]), _res, _res)
+                        for i in range(pi.shape[0])
+                    ],
+                    axis=0,
+                )
+            pw = data.get("past_observation/wrist_image")
+            if pw is not None and np.asarray(pw).size > 0:
+                pw = np.asarray(pw)
+                inputs["past_wrist_image"] = np.stack(
+                    [
+                        image_tools.resize_with_pad(_parse_image(pw[i]), _res, _res)
+                        for i in range(pw.shape[0])
+                    ],
+                    axis=0,
+                )
+            ps = data.get("past_observation/state")
+            if ps is not None:
+                inputs["past_state"] = ps
+            if "past_actions" in data:
+                inputs["past_actions"] = data["past_actions"]
+            if "past_frame_mask" in data:
+                inputs["past_frame_mask"] = data["past_frame_mask"]
 
         return inputs
 

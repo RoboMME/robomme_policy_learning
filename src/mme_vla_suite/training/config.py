@@ -28,8 +28,14 @@ import sentencepiece
 import os
 
 from mme_vla_suite.models.integration import history_pi0
+from mme_vla_suite.models.integration.dense_history_pi0 import DenseHistoryPi0Config
+from mme_vla_suite.models.config.schema import PastFramesConfig
 from mme_vla_suite.policies.robomme_policy import RoboMMEInputs, RoboMMEOutputs
 from mme_vla_suite.models.config.utils import get_history_config
+from mme_vla_suite.training.past_frames_transforms import (
+    PastFramesDeltaActions,
+    PastFramesPadStatesAndActions,
+)
 
 
 ModelType: TypeAlias = _model.ModelType
@@ -234,12 +240,12 @@ class ModelTransformFactory(GroupFactory):
                 symbolic_memory_type = None
                 max_token_len = model_config.max_token_len
                 
-                if model_config.use_history and model_config.history_config is not None:
+                if getattr(model_config, "use_history", False) and getattr(model_config, "history_config", None) is not None:
                     loaded_config = get_history_config(model_config.history_config)
 
                     if loaded_config.representation_type == "symbolic":
                         symbolic_memory_type = loaded_config.symbolic_memory.type
-                        max_token_len *= 2 # it's enough for subgoals, no need to set into 512.
+                        max_token_len *= 2
                 
                 print(f"max_token_len: {max_token_len}")
                 
@@ -329,53 +335,86 @@ class FakeDataConfig(DataConfigFactory):
 
 
 
+def _norm_stats_with_past_frames(
+    norm_stats: dict[str, _transforms.NormStats] | None,
+) -> dict[str, _transforms.NormStats] | None:
+    if norm_stats is None:
+        return None
+    out = dict(norm_stats)
+    if "state" in out:
+        out["past_state"] = out["state"]
+    if "actions" in out:
+        out["past_actions"] = out["actions"]
+    return out
+
+
 @dataclasses.dataclass(frozen=True)
 class RoboMMEDataConfig(DataConfigFactory):
+    # If set, ``RoboMMEDataset`` loads N past steps + action chunks; repack / delta / norm extended accordingly.
+    past_frames: PastFramesConfig | None = None
 
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        repack: dict[str, str] = {
+            "observation/image": "image",
+            "observation/wrist_image": "wrist_image",
+            "observation/state": "state",
+            "actions": "actions",
+            "prompt": "prompt",
+        }
+        if getattr(model_config, "use_history", False):
+            repack.update({
+                "static_image_emb": "static_image_emb",
+                "static_pos_emb": "static_pos_emb",
+                "static_state_emb": "static_state_emb",
+                "static_mask": "static_mask",
+                "recur_image_emb": "recur_image_emb",
+                "recur_pos_emb": "recur_pos_emb",
+                "recur_state_emb": "recur_state_emb",
+                "recur_mask": "recur_mask",
+                "simple_subgoal": "simple_subgoal",
+                "grounded_subgoal": "grounded_subgoal",
+            })
+        if self.past_frames is not None:
+            repack.update(
+                {
+                    "past_observation/image": "past_image",
+                    "past_observation/wrist_image": "past_wrist_image",
+                    "past_observation/state": "past_state",
+                    "past_actions": "past_actions",
+                    "past_frame_mask": "past_frame_mask",
+                }
+            )
+
         repack_transform = _transforms.Group(
-            inputs=[
-                _transforms.RepackTransform(
-                    {
-                        "observation/image": "image",
-                        "observation/wrist_image": "wrist_image",
-                        "observation/state": "state",
-                        "actions": "actions",
-                        "prompt": "prompt",
-                        # ---- New added keys ----
-                        # perceptual memory
-                        "static_image_emb": "static_image_emb", # (b, l, d1)
-                        "static_pos_emb": "static_pos_emb", # (b, l, d2)
-                        "static_state_emb": "static_state_emb", # (b, l, d3)
-                        "static_mask": "static_mask", # (b, l)
-                        # recurrent memory
-                        "recur_image_emb": "recur_image_emb", # (b, t, v, p, d1)
-                        "recur_pos_emb": "recur_pos_emb", # (b, t, v, p, d2)
-                        "recur_state_emb": "recur_state_emb", # (b, t, d3)
-                        "recur_mask": "recur_mask",
-                        # symbolic memory
-                        "simple_subgoal": "simple_subgoal",
-                        "grounded_subgoal": "grounded_subgoal",
-                    }
-                )
-            ]
+            inputs=[_transforms.RepackTransform(repack)]
         )
 
         data_transforms = _transforms.Group(
-            inputs=[RoboMMEInputs(model_type=model_config.model_type)],
+            inputs=[RoboMMEInputs(model_type=model_config.model_type, past_frames=self.past_frames is not None)],
             outputs=[RoboMMEOutputs()],
         )
 
         delta_action_mask = _transforms.make_bool_mask(7, -1)
+        extra_after_delta: list[DataTransformFn] = []
+        if self.past_frames is not None:
+            extra_after_delta.append(PastFramesDeltaActions(delta_action_mask))
         data_transforms = data_transforms.push(
-            inputs=[_transforms.DeltaActions(delta_action_mask)],
+            inputs=[_transforms.DeltaActions(delta_action_mask), *extra_after_delta],
             outputs=[_transforms.AbsoluteActions(delta_action_mask)],
         )
 
         model_transforms = ModelTransformFactory()(model_config)
+        if self.past_frames is not None:
+            model_transforms = model_transforms.push(
+                inputs=[PastFramesPadStatesAndActions(model_config.action_dim)]
+            )
+
+        base = self.create_base_config(assets_dirs, model_config)
+        norm_stats = _norm_stats_with_past_frames(base.norm_stats) if self.past_frames else base.norm_stats
         return dataclasses.replace(
-            self.create_base_config(assets_dirs, model_config),
+            base,
+            norm_stats=norm_stats,
             repack_transforms=repack_transform,
             data_transforms=data_transforms,
             model_transforms=model_transforms,
@@ -458,7 +497,7 @@ class TrainConfig:
     # Name of the config. Must be unique. Will be used to reference this config.
     name: tyro.conf.Suppress[str]
     # Project name.
-    project_name: str = "openpi"
+    project_name: str = "robomme"
     # Experiment name. Will be used to name the metadata and checkpoint directories.
     exp_name: str = tyro.MISSING
 
@@ -551,11 +590,106 @@ class TrainConfig:
             raise ValueError("Cannot resume and overwrite at the same time.")
 
 
-OPENPI_DATA_HOME = os.getenv("OPENPI_DATA_HOME", "~/.cache/openpi")
+OPENPI_DATA_HOME = os.getenv("OPENPI_DATA_HOME", f"{os.path.expanduser('~')}/.cache/openpi")
 
 _CONFIGS = [
     TrainConfig(
-        name="pi05_baseline",
+        name="pi05_baseline_with_history",
+        model=DenseHistoryPi0Config(
+            pi05=True,
+            action_horizon=20,
+            discrete_state_input=False,
+            num_past_frames=10,
+        ),
+        data=RoboMMEDataConfig(
+            repo_id="robomme",
+            base_config=DataConfig(prompt_from_task=True),
+            past_frames=PastFramesConfig(num_past=10, stride=10),
+        ),
+        batch_size=1,
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=100_000,
+            decay_lr=5e-5,
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        weight_loader=weight_loaders.CheckpointWeightLoader(
+            os.path.join(OPENPI_DATA_HOME, "openpi-assets/checkpoints/pi05_base/params"),
+        ),
+        num_train_steps=80_000,
+        save_interval=10_000,
+        keep_period=10_000,
+        num_workers=4,
+        ema_decay=0.999,
+        fsdp_devices=1,
+    ),
+    # TrainConfig(
+    #     name="pi05_densehistory_fullfinetune",
+    #     model=history_pi0.HistoryPi0Config(
+    #         pi05=True, 
+    #         action_horizon=20,
+    #         use_history=True, 
+    #         history_config=None,
+    #         discrete_state_input=False,
+    #     ),
+    #     data=RoboMMEDataConfig(
+    #         repo_id=f"robomme",
+    #         base_config=DataConfig(prompt_from_task=True),
+    #     ),
+    #     batch_size=128,
+    #     lr_schedule=_optimizer.CosineDecaySchedule(
+    #         warmup_steps=10_000,
+    #         peak_lr=5e-5,
+    #         decay_steps=100_000,
+    #         decay_lr=5e-5,
+    #     ),
+    #     optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+    #     # freeze_filter=history_pi0.HistoryPi0Config().get_freeze_filter(),
+    #     weight_loader=weight_loaders.CheckpointWeightLoader(
+    #         os.path.join(OPENPI_DATA_HOME, "openpi-assets/checkpoints/pi05_base/params"),
+    #     ),
+    #     num_train_steps=80_000, 
+    #     save_interval=10_000,
+    #     keep_period=10_000,
+    #     num_workers=4,
+    #     ema_decay=0.999,
+    #     fsdp_devices=1,
+    # ),
+    TrainConfig(
+        name="pi05_baseline_fullfinetune",
+        model=history_pi0.HistoryPi0Config(
+            pi05=True, 
+            action_horizon=20,
+            use_history=False, 
+            history_config=None,
+            discrete_state_input=False,
+        ),
+        data=RoboMMEDataConfig(
+            repo_id=f"robomme",
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        batch_size=128,
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=100_000,
+            decay_lr=5e-5,
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        # freeze_filter=history_pi0.HistoryPi0Config().get_freeze_filter(),
+        weight_loader=weight_loaders.CheckpointWeightLoader(
+            os.path.join(OPENPI_DATA_HOME, "openpi-assets/checkpoints/pi05_base/params"),
+        ),
+        num_train_steps=80_000, 
+        save_interval=10_000,
+        keep_period=10_000,
+        num_workers=4,
+        ema_decay=0.999,
+        fsdp_devices=1,
+    ),
+    TrainConfig(
+        name="pi05_baseline_frozen_encoder",
         model=history_pi0.HistoryPi0Config(
             pi05=True, 
             action_horizon=20,

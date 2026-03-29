@@ -1,14 +1,19 @@
+"""Training script for DenseHistoryPi0.
+
+Standalone — no dependency on HistoryPi0 or its memory encoder machinery.
+"""
+
 import dataclasses
 import functools
 import logging
 import platform
+
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
 import wandb
 
-from typing import Any
 import tqdm_loggable.auto as tqdm
 import etils.epath as epath
 import flax.nnx as nnx
@@ -22,21 +27,20 @@ import openpi.training.optimizer as _optimizer
 import openpi.training.sharding as sharding
 import openpi.training.utils as training_utils
 import openpi.training.weight_loaders as _weight_loaders
-from openpi.training.optimizer import CosineDecaySchedule
+from openpi.models import model as _model
 
-
-import mme_vla_suite.models.integration.history_pi0 as _model
-from mme_vla_suite.models.integration.history_observation import (
-    HistAugObservation,
-)
+from mme_vla_suite.models.integration.dense_history_pi0 import DenseHistoryPi0
+from mme_vla_suite.models.integration.history_observation import HistAugObservation
 import mme_vla_suite.training.config as _config
 import mme_vla_suite.training.dataloader as _data_loader
-from mme_vla_suite.models.config.utils import get_history_config
 from mme_vla_suite.training.config import RoboMMEDataConfig
 
 
+# ---------------------------------------------------------------------------
+# Logging / wandb
+# ---------------------------------------------------------------------------
+
 def init_logging():
-    """Custom logging format for better readability."""
     level_mapping = {
         "DEBUG": "D",
         "INFO": "I",
@@ -54,7 +58,6 @@ def init_logging():
         fmt="%(asctime)s.%(msecs)03d [%(levelname)s] %(message)-80s (%(process)d:%(filename)s:%(lineno)s)",
         datefmt="%H:%M:%S",
     )
-
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.handlers[0].setFormatter(formatter)
@@ -64,7 +67,6 @@ def init_wandb(
     config: _config.TrainConfig,
     *,
     resuming: bool,
-    log_code: bool = False,
     enabled: bool = True,
 ):
     if not enabled:
@@ -82,29 +84,21 @@ def init_wandb(
             name=config.exp_name,
             config=dataclasses.asdict(config),
             project=config.project_name,
-            # entity="daiyp_umich",
         )
         (ckpt_dir / "wandb_id.txt").write_text(wandb.run.id)
 
-    if log_code:
-        wandb.run.log_code(epath.Path(__file__).parent.parent)
 
-def init_history_config(config: _config.TrainConfig):
-    # this is for evaluation config checking
-    if config.model.history_config is not None:
-        with open(config.checkpoint_dir / "history_config.txt", "w") as f:
-            f.write(config.model.history_config)
+# ---------------------------------------------------------------------------
+# Weight loading
+# ---------------------------------------------------------------------------
 
 def _load_weights_and_validate(
     loader: _weight_loaders.WeightLoader, params_shape: at.Params
 ) -> at.Params:
-    """Loads and validates the weights. Returns a loaded subset of the weights."""
     loaded_params = loader.load(params_shape)
     at.check_pytree_equality(
         expected=params_shape, got=loaded_params, check_shapes=True, check_dtypes=True
     )
-
-    # Remove jax.ShapeDtypeStruct from the loaded params. This makes sure that only the loaded params are returned.
     return traverse_util.unflatten_dict(
         {
             k: v
@@ -114,15 +108,9 @@ def _load_weights_and_validate(
     )
 
 
-def params_split(params, trainable_filter):
-    memory_filter = params.filter(trainable_filter).filter(
-        nnx.All(nnx.Param, nnx_utils.PathRegex(".*mem.*"))
-    )
-    non_memory_filter = params.filter(trainable_filter).filter(
-        nnx.All(nnx.Param, nnx.Not(nnx_utils.PathRegex(".*mem.*")))
-    )
-    return memory_filter, non_memory_filter
-
+# ---------------------------------------------------------------------------
+# Train state init
+# ---------------------------------------------------------------------------
 
 @at.typecheck
 def init_train_state(
@@ -131,7 +119,7 @@ def init_train_state(
     mesh: jax.sharding.Mesh,
     *,
     resume: bool,
-) -> tuple[training_utils.TrainState, Any]:
+) -> tuple[training_utils.TrainState, ...]:
     tx = _optimizer.create_optimizer(
         config.optimizer, config.lr_schedule, weight_decay_mask=None
     )
@@ -140,37 +128,24 @@ def init_train_state(
         rng: at.KeyArrayLike, partial_params: at.Params | None = None
     ) -> training_utils.TrainState:
         rng, model_rng = jax.random.split(rng)
-        # initialize the model (and its parameters).
         model = config.model.create(model_rng)
 
-        # Merge the partial params into the model.
         if partial_params is not None:
             graphdef, state = nnx.split(model)
             state.replace_by_pure_dict(partial_params)
             model = nnx.merge(graphdef, state)
 
         params = nnx.state(model)
-        # Convert frozen params to bfloat16.
         params = nnx_utils.state_map(
             params,
             config.freeze_filter,
             lambda p: p.replace(p.value.astype(jnp.bfloat16)),
         )
 
-        logging.info(
-            f"Total Model Size: {sum(x.size for x in jax.tree_util.tree_leaves(params)) / 1024 / 1024} MB"
-        )
-        logging.info(
-            f"Trainable Model Size: {sum(x.size for x in jax.tree_util.tree_leaves(params.filter(config.trainable_filter))) / 1024 / 1024} MB"
-        )
-
-        memory_params, non_memory_params = params_split(params, config.trainable_filter)
-        logging.info(
-            f"Memory-related  Size: {sum(x.size for x in jax.tree_util.tree_leaves(memory_params))/1024/1024} MB"
-        )
-        logging.info(
-            f"Non-Memory Size: {sum(x.size for x in jax.tree_util.tree_leaves(non_memory_params))/1024/1024} MB"
-        )
+        total_mb = sum(x.size for x in jax.tree_util.tree_leaves(params)) / 1024 / 1024
+        train_mb = sum(x.size for x in jax.tree_util.tree_leaves(params.filter(config.trainable_filter))) / 1024 / 1024
+        logging.info(f"Total params: {total_mb:.1f} M elements")
+        logging.info(f"Trainable params: {train_mb:.1f} M elements")
 
         return training_utils.TrainState(
             step=0,
@@ -186,7 +161,6 @@ def init_train_state(
     state_sharding = sharding.fsdp_sharding(train_state_shape, mesh, log=True)
 
     if resume:
-        # replace pi05_base with the checkpoint id
         ckpt_epath = config.checkpoint_dir / str(config.resum_ckpt_id) / "params"
         weight_loader = _weight_loaders.CheckpointWeightLoader(str(ckpt_epath))
         partial_params = _load_weights_and_validate(weight_loader, train_state_shape.params.to_pure_dict())
@@ -194,13 +168,11 @@ def init_train_state(
         partial_params = _load_weights_and_validate(
             config.weight_loader, train_state_shape.params.to_pure_dict()
         )
-        
-    replicated_sharding = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec())
 
-    # Initialize the train state and mix in the partial params.
+    replicated_sharding = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec())
     train_state = jax.jit(
         init,
-        donate_argnums=(1,),  # donate the partial params buffer.
+        donate_argnums=(1,),
         in_shardings=replicated_sharding,
         out_shardings=state_sharding,
     )(init_rng, partial_params)
@@ -208,42 +180,41 @@ def init_train_state(
     return train_state, state_sharding
 
 
+# ---------------------------------------------------------------------------
+# Train step
+# ---------------------------------------------------------------------------
+
 @at.typecheck
 def train_step(
     config: _config.TrainConfig,
     rng: at.KeyArrayLike,
     state: training_utils.TrainState,
     batch: tuple[HistAugObservation, _model.Actions],
-) -> tuple[
-    training_utils.TrainState, dict[str, at.Array], Any
-]:
+) -> tuple[training_utils.TrainState, dict[str, at.Array]]:
     model = nnx.merge(state.model_def, state.params)
     model.train()
 
-    @at.typecheck
     def loss_fn(
-        model: _model.HistoryPi0,
+        model: DenseHistoryPi0,
         rng: at.KeyArrayLike,
         observation: HistAugObservation,
         actions: _model.Actions,
     ):
-        chunked_loss, stats = model.compute_loss(rng, observation, actions, train=True)
-        return jnp.mean(chunked_loss), stats
+        chunked_loss, _stats = model.compute_loss(rng, observation, actions, train=True)
+        return jnp.mean(chunked_loss)
 
     train_rng = jax.random.fold_in(rng, state.step)
     observation, actions = batch
 
-    # Filter out frozen params.
     diff_state = nnx.DiffState(0, config.trainable_filter)
-    (loss, stats), grads = nnx.value_and_grad(
-        loss_fn, argnums=diff_state, has_aux=True
-    )(model, train_rng, observation, actions)
+    loss, grads = nnx.value_and_grad(loss_fn, argnums=diff_state)(
+        model, train_rng, observation, actions
+    )
 
     params = state.params.filter(config.trainable_filter)
     updates, new_opt_state = state.tx.update(grads, state.opt_state, params)
     new_params = optax.apply_updates(params, updates)
 
-    # Update the model in place and return the new full state.
     nnx.update(model, new_params)
     new_params = nnx.state(model)
 
@@ -261,14 +232,11 @@ def train_step(
             ),
         )
 
-    # Filter out params that aren't kernels.
     kernel_params = nnx.state(
         model,
         nnx.All(
             nnx.Param,
-            nnx.Not(
-                nnx_utils.PathRegex(".*/(bias|scale|pos_embedding|input_embedding)")
-            ),
+            nnx.Not(nnx_utils.PathRegex(".*/(bias|scale|pos_embedding|input_embedding)")),
             lambda _, x: x.value.ndim > 1,
         ),
     )
@@ -279,39 +247,12 @@ def train_step(
         "param_norm": optax.global_norm(kernel_params),
         "llm_grad_norm": optax.global_norm(grads.PaliGemma.llm),
     }
-    if config.model.use_history and hasattr(grads, "mem_encoder"):
-        info["mem_enc_norm"] = optax.global_norm(grads.mem_encoder)
-
-    return new_state, info, stats
+    return new_state, info
 
 
-def get_stats(stats_dict) -> dict[str, at.Array]:
-    mask = stats_dict["mask"]
-    if mask.ndim == 2:
-        b, l = mask.shape  # for rmt
-    else:
-        b, _, l = mask.shape  # for ttt
-        stats_dict = {k: v.mean(axis=1) for k, v in stats_dict.items()}
-
-    dic = {}
-    for k in stats_dict.keys():
-        dic[k] = [[] for _ in range(l)]
-
-    mask = stats_dict["mask"]
-    for batch_idx in range(b):
-        for step_idx in range(l):
-            if mask[batch_idx, step_idx]:
-                for k, v in stats_dict.items():
-                    dic[k][step_idx].append(v[batch_idx, step_idx])
-
-    stats = {}
-    for k, v in dic.items():
-        stats[k] = np.zeros((l,))
-        for step in range(l):
-            if len(v[step]) > 0:
-                stats[k][step] = np.array(v[step]).mean()
-    return stats
-
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 def main(config: _config.TrainConfig):
     init_logging()
@@ -335,8 +276,7 @@ def main(config: _config.TrainConfig):
     data_sharding = jax.sharding.NamedSharding(
         mesh, jax.sharding.PartitionSpec(sharding.DATA_AXIS)
     )
-    replicated_sharding = jax.sharding.NamedSharding(
-        mesh, jax.sharding.PartitionSpec())
+    replicated_sharding = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec())
 
     checkpoint_manager, resuming = _checkpoints.initialize_checkpoint_dir(
         config.checkpoint_dir,
@@ -345,14 +285,6 @@ def main(config: _config.TrainConfig):
         resume=config.resume,
     )
     init_wandb(config, resuming=resuming, enabled=config.wandb_enabled)
-    init_history_config(config)
-    history_config = get_history_config(config.model.history_config)
-    
-    if history_config:
-        if history_config.streaming_obs_horizon == 16:
-            assert config.model.action_horizon == 20, "action_horizon must be 20 when streaming_obs_horizon is 16"
-        else:
-            raise ValueError(f"Unsupported streaming_obs_horizon: {history_config.streaming_obs_horizon}")
 
     data_config = config.data.create(config.assets_dirs, config.model)
     logging.info(f"data_config: {data_config}")
@@ -362,17 +294,16 @@ def main(config: _config.TrainConfig):
         if isinstance(config.data, RoboMMEDataConfig)
         else None
     )
-    data_loader = _data_loader.create_data_loader(
+    data_loader = _data_loader.create_dense_history_data_loader(
         config.dataset_path,
         data_config,
-        history_config=config.model.history_config,
-        sharding=data_sharding,
-        shuffle=True,
         action_horizon=config.model.action_horizon,
         batch_size=config.batch_size,
+        past_frames_config=past_frames_cfg,
+        sharding=data_sharding,
+        shuffle=True,
         num_workers=config.num_workers,
         seed=config.seed,
-        past_frames_config=past_frames_cfg,
     )
     data_iter = iter(data_loader)
     batch = next(data_iter)
@@ -380,7 +311,6 @@ def main(config: _config.TrainConfig):
         f"Initialized data loader:\n{training_utils.array_tree_to_info(batch)}"
     )
 
-    # Log images from first batch to sanity check.
     images_to_log = [
         wandb.Image(
             np.concatenate(
@@ -402,14 +332,14 @@ def main(config: _config.TrainConfig):
     ptrain_step = jax.jit(
         functools.partial(train_step, config),
         in_shardings=(replicated_sharding, train_state_sharding, data_sharding),
-        out_shardings=(train_state_sharding, replicated_sharding, replicated_sharding),
+        out_shardings=(train_state_sharding, replicated_sharding),
         donate_argnums=(1,),
     )
 
     start_step = int(train_state.step)
     if config.resum_ckpt_id is not None:
         start_step += config.resum_ckpt_id
-    
+
     pbar = tqdm.tqdm(
         range(start_step, config.num_train_steps),
         initial=start_step,
@@ -420,21 +350,12 @@ def main(config: _config.TrainConfig):
     infos = []
     for step in pbar:
         with sharding.set_mesh(mesh):
-            train_state, info, stats = ptrain_step(train_rng, train_state, batch)
+            train_state, info = ptrain_step(train_rng, train_state, batch)
         infos.append(info)
+
         if step % config.log_interval == 0:
             stacked_infos = common_utils.stack_forest(infos)
             reduced_info = jax.device_get(jax.tree.map(jnp.mean, stacked_infos))
-
-            if (
-                config.model.use_history and history_config.representation_type == "recurrent"
-                and history_config.recurrent_memory.output_stats
-            ):
-                stats = jax.device_get(stats)
-                if stats:
-                    stats_dict = get_stats(stats)
-                    pbar.write(f"Recurrent Memory Stats: {stats_dict}")
-
             info_str = ", ".join(f"{k}={v:.4f}" for k, v in reduced_info.items())
             pbar.write(f"Step {step}: {info_str}")
             wandb.log(reduced_info, step=step)

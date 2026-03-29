@@ -23,6 +23,7 @@ from mme_vla_suite.models.integration.history_observation import (
     preprocess_observation,
 )
 from mme_vla_suite.models.integration import history_gemma as _gemma
+from mme_vla_suite.models.config.schema import HistoryConfig
 from mme_vla_suite.models.config.utils import get_history_config
 
 
@@ -79,7 +80,7 @@ class HistoryPi0Config(Pi0Config):
     memory_expert_variant: _gemma.Variant = "gemma_150m"
 
     use_history: bool = False  # Use history or not
-    history_config: str | None = None  # history config
+    history_config: str | HistoryConfig | None = None  # preset name (e.g. foo.yaml) or inline HistoryConfig
     max_token_len: int = 64
 
     @override
@@ -92,6 +93,7 @@ class HistoryPi0Config(Pi0Config):
             
             max_token_len = self.max_token_len
             if loaded_config.representation_type == "symbolic":
+                assert loaded_config.symbolic_memory is not None
                 if loaded_config.symbolic_memory.type in ["simple_subgoal", "grounded_subgoal"]:
                     max_token_len *= 2
                 else:
@@ -111,7 +113,15 @@ class HistoryPi0Config(Pi0Config):
             if not self.use_history:
                 observation_spec = base_obs_spec  # basic pi0
             else:
-                if self.history_config.representation_type == "symbolic":
+                if isinstance(self.history_config, HistoryConfig):
+                    hc = self.history_config
+                elif isinstance(self.history_config, str):
+                    hc = get_history_config(self.history_config)
+                else:
+                    hc = None
+                if hc is None:
+                    raise ValueError("use_history=True requires a non-null history_config")
+                if hc.representation_type == "symbolic":
                     observation_spec = HistAugObservation.from_base_obs(
                         base_obs_spec,
                         symbolic_tokenized_prompt=jax.ShapeDtypeStruct(
@@ -121,73 +131,75 @@ class HistoryPi0Config(Pi0Config):
                             [batch_size, self.max_token_len], bool
                         ),
                     )
-                elif self.history_config.representation_type == "perceptual":
+                elif hc.representation_type == "perceptual":
                     observation_spec = HistAugObservation.from_base_obs(
                         base_obs_spec,
                         static_image_emb=jax.ShapeDtypeStruct(
                             [
                                 batch_size,
-                                self.history_config.budget,
-                                self.history_config.memory_feature.img.input_dim,
+                                hc.budget,
+                                hc.memory_feature.img.input_dim,
                             ],
                             jnp.float32,
                         ),
                         static_mask=jax.ShapeDtypeStruct(
-                            [batch_size, self.history_config.budget],
+                            [batch_size, hc.budget],
                             jnp.bool_,
                         ),
                         static_pos_emb=jax.ShapeDtypeStruct(
                             [
                                 batch_size,
-                                self.history_config.budget,
-                                self.history_config.memory_feature.pos.input_dim,
+                                hc.budget,
+                                hc.memory_feature.pos.input_dim,
                             ],
                             jnp.float32,
                         ),
                         static_state_emb=jax.ShapeDtypeStruct(
                             [
                                 batch_size,
-                                self.history_config.budget,
-                                self.history_config.memory_feature.state.input_dim,
+                                hc.budget,
+                                hc.memory_feature.state.input_dim,
                             ],
                             jnp.float32,
                         ),
                     )
-                elif self.history_config.representation_type == "recurrent":
+                elif hc.representation_type == "recurrent":
+                    assert hc.recurrent_memory is not None
+                    rm = hc.recurrent_memory
                     observation_spec = HistAugObservation.from_base_obs(
                         base_obs_spec,
                         recur_image_emb=jax.ShapeDtypeStruct(
                             [
                                 batch_size,
-                                self.history_config.recurrent_memory.max_recur_steps,
-                                self.history_config.num_views,
-                                self.history_config.token_per_image,
-                                self.history_config.memory_feature.img.input_dim,
+                                rm.max_recur_steps,
+                                hc.num_views,
+                                hc.token_per_image,
+                                hc.memory_feature.img.input_dim,
                             ],
                             jnp.float32,
                         ),
                         recur_mask=jax.ShapeDtypeStruct(
                             [
                                 batch_size,
-                                self.history_config.recurrent_memory.max_recur_steps,
+                                rm.max_recur_steps,
                             ],
                             jnp.bool_,
                         ),
                         recur_pos_emb=jax.ShapeDtypeStruct(
                             [
                                 batch_size,
-                                self.history_config.recurrent_memory.max_recur_steps,
-                                self.history_config.num_views,
-                                self.history_config.token_per_image,
-                                self.history_config.memory_feature.pos.input_dim,
+                                rm.max_recur_steps,
+                                hc.num_views,
+                                hc.token_per_image,
+                                hc.memory_feature.pos.input_dim,
                             ],
                             jnp.float32,
                         ),
                         recur_state_emb=jax.ShapeDtypeStruct(
                             [
                                 batch_size,
-                                self.history_config.recurrent_memory.max_recur_steps,
-                                self.history_config.memory_feature.state.input_dim,
+                                rm.max_recur_steps,
+                                hc.memory_feature.state.input_dim,
                             ],
                             jnp.float32,
                         ),
@@ -195,7 +207,7 @@ class HistoryPi0Config(Pi0Config):
 
                 else:
                     raise ValueError(
-                        f"Not supported representation type: {self.history_config.representation_type}"
+                        f"Not supported representation type: {hc.representation_type}"
                     )
 
         return observation_spec, action_spec

@@ -1,6 +1,5 @@
 import tqdm
 import tyro
-from omegaconf import OmegaConf, DictConfig
 import numpy as np
 import dataclasses
 
@@ -9,6 +8,7 @@ import openpi.shared.normalize as normalize
 from openpi.training.data_loader import TransformedDataset, TorchDataLoader
 
 import mme_vla_suite.training.config as _config
+from mme_vla_suite.models.config.schema import HistoryConfig
 from mme_vla_suite.training.dataset import RoboMMEDataset
 
 class RemoveStrings(transforms.DataTransformFn):
@@ -19,7 +19,7 @@ class RemoveStrings(transforms.DataTransformFn):
 def create_data_loader(
     dataset_path: str,
     data_config: _config.DataConfig,
-    history_config: DictConfig,
+    history_config: HistoryConfig | None,
     action_horizon: int,
     batch_size: int,
     num_batches: int | None = None,
@@ -60,7 +60,10 @@ def create_data_loader(
 
 def main(config_name: str = "mme_vla_suite", repo_id: str = "robomme", dataset_path: str = "data/robomme_preprocessed_data"):
     config = _config.get_config(config_name)
-    config = dataclasses.replace(config, data=dataclasses.replace(config.data, repo_id=repo_id))
+    data_field = dataclasses.replace(config.data, repo_id=repo_id)
+    if hasattr(data_field, "past_frames") and data_field.past_frames is not None:
+        data_field = dataclasses.replace(data_field, past_frames=None)
+    config = dataclasses.replace(config, data=data_field)
     data_config = config.data.create(config.assets_dirs, config.model)
         
     data_loader, num_batches = create_data_loader(

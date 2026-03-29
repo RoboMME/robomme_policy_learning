@@ -1,9 +1,25 @@
 from flax import struct
+import numpy as np
+import torch
 
 from openpi.models.model import ArrayT
 from openpi.models.model import Observation as _Observation
 from openpi.models.model import preprocess_observation as _preprocess_observation
 import openpi.shared.array_typing as at
+
+
+def _past_stack_to_float(img: at.Array | None) -> at.Array | None:
+    """Convert optional (b, n, h, w, c) uint8 stacks to [-1, 1] float32 like ``Observation.from_dict``."""
+    if img is None:
+        return None
+    import jax.numpy as jnp
+    if isinstance(img, jnp.ndarray) and img.dtype == jnp.uint8:
+        return img.astype(jnp.float32) / 255.0 * 2.0 - 1.0
+    if isinstance(img, np.ndarray) and img.dtype == np.uint8:
+        return img.astype(np.float32) / 255.0 * 2.0 - 1.0
+    if hasattr(img, "dtype") and img.dtype == torch.uint8:
+        return img.to(torch.float32) / 255.0 * 2.0 - 1.0
+    return img
 
 
 #  b: batch size
@@ -34,6 +50,13 @@ class HistAugObservation(_Observation):
     symbolic_tokenized_prompt: at.Int[at.Array, "b l2"] | None = None
     symbolic_tokenized_prompt_mask: at.Bool[at.Array, "b l2"] | None = None
 
+    # optional dense past frames (``RoboMMEDataConfig.past_frames`` + episode-step index)
+    past_image: at.Float[at.Array, "b n h w c"] | None = None
+    past_wrist_image: at.Float[at.Array, "b n h w c"] | None = None
+    past_state: at.Float[at.Array, "b n d"] | None = None
+    past_actions: at.Float[at.Array, "b n ah ad"] | None = None
+    past_frame_mask: at.Bool[at.Array, "b n"] | None = None
+
     @classmethod
     def from_dict(cls, data: at.PyTree[ArrayT]) -> "HistAugObservation":
         parent_obs = super().from_dict(data)
@@ -59,6 +82,11 @@ class HistAugObservation(_Observation):
             symbolic_tokenized_prompt_mask=data.get(
                 "symbolic_tokenized_prompt_mask", None
             ),
+            past_image=_past_stack_to_float(data.get("past_image")),
+            past_wrist_image=_past_stack_to_float(data.get("past_wrist_image")),
+            past_state=data.get("past_state"),
+            past_actions=data.get("past_actions"),
+            past_frame_mask=data.get("past_frame_mask"),
         )
 
     def to_dict(self) -> at.PyTree[ArrayT]:
@@ -73,6 +101,11 @@ class HistAugObservation(_Observation):
         result["recur_state_emb"] = self.recur_state_emb
         result["symbolic_tokenized_prompt"] = self.symbolic_tokenized_prompt  #  subgoal
         result["symbolic_tokenized_prompt_mask"] = self.symbolic_tokenized_prompt_mask
+        result["past_image"] = self.past_image
+        result["past_wrist_image"] = self.past_wrist_image
+        result["past_state"] = self.past_state
+        result["past_actions"] = self.past_actions
+        result["past_frame_mask"] = self.past_frame_mask
         return result
 
     def to_base_obs(self) -> _Observation:
@@ -100,6 +133,11 @@ class HistAugObservation(_Observation):
         recur_state_emb: at.Float[ArrayT, "*b t d3"] | None = None,
         symbolic_tokenized_prompt: at.Int[ArrayT, "*b l d5"] | None = None,
         symbolic_tokenized_prompt_mask: at.Bool[ArrayT, "*b l d6"] | None = None,
+        past_image: at.Float[ArrayT, "*b n h w c"] | None = None,
+        past_wrist_image: at.Float[ArrayT, "*b n h w c"] | None = None,
+        past_state: at.Float[ArrayT, "*b n d"] | None = None,
+        past_actions: at.Float[ArrayT, "*b n ah ad"] | None = None,
+        past_frame_mask: at.Bool[ArrayT, "*b n"] | None = None,
     ) -> "HistAugObservation":
         return HistAugObservation(
             images=base_obs.images,
@@ -119,6 +157,11 @@ class HistAugObservation(_Observation):
             recur_state_emb=recur_state_emb,
             symbolic_tokenized_prompt=symbolic_tokenized_prompt,
             symbolic_tokenized_prompt_mask=symbolic_tokenized_prompt_mask,
+            past_image=past_image,
+            past_wrist_image=past_wrist_image,
+            past_state=past_state,
+            past_actions=past_actions,
+            past_frame_mask=past_frame_mask,
         )
 
 
@@ -146,4 +189,9 @@ def preprocess_observation(
         recur_state_emb=observation.recur_state_emb,
         symbolic_tokenized_prompt=observation.symbolic_tokenized_prompt,
         symbolic_tokenized_prompt_mask=observation.symbolic_tokenized_prompt_mask,
+        past_image=observation.past_image,
+        past_wrist_image=observation.past_wrist_image,
+        past_state=observation.past_state,
+        past_actions=observation.past_actions,
+        past_frame_mask=observation.past_frame_mask,
     )
