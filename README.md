@@ -335,6 +335,7 @@ Set the `MODEL_TYPE` variable to one of the following:
 
 Running `eval.sh` automatically starts two tmux windows: one for the policy server and one for RoboMME evaluation. If the evaluation is interrupted, you can rerun the script; it will automatically resume from the generated `progress.json`.
 
+We also provide a selection of MME-VLA model evaluation logs [here](https://huggingface.co/datasets/Yinpei/selected_robomme_eval_results). For more comprehensive logs, please rerun the evaluation following the guidance.
 
 ### ✍️ Manual evaluation (per model)
 Details are provided [here](docs/manual_evaluation.md).
