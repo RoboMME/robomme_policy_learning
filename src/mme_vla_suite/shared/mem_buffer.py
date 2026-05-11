@@ -29,7 +29,7 @@ class MemoryBuffer:
         img_emb_dim: int = 2048,  # the initila image token embedding dimension, siglip is 2048
         pos_emb_dim: int = 768, 
         state_emb_dim: int = 8,
-        max_steps: int = 4096,
+        max_steps: int = 20480,
         compute_token_drop_score: bool = False, # set true when using token dropping
         token_drop_keptsize: int = 2048,   # max number of tokens to be kept in the heap for similarity score calculation
         token_drop_stride: int = 8,        # timestep stride for similarity score calculation, if too close, the difference will be too small
@@ -84,7 +84,15 @@ class MemoryBuffer:
         
         t, v, _, _, _ = images.shape
         assert v == self.num_views
-        
+
+        # numpy slices past the end return empty arrays silently; assert here so
+        # out-of-budget shows up as an explicit error instead of a downstream stack-shape mismatch.
+        max_step_idx = max(step_idx_list)
+        assert (max_step_idx + 1) * self.num_views <= self.pos_emb_dict["8x8"].shape[0], (
+            f"step_idx {max_step_idx} exceeds pos_emb_dict budget "
+            f"({self.pos_emb_dict['8x8'].shape[0] // self.num_views}); increase MemoryBuffer max_steps."
+        )
+
         image_jnp = jnp.array(
             images.astype(np.float32) / 255.0 * 2.0 - 1.0
         )
@@ -92,11 +100,11 @@ class MemoryBuffer:
         image_jnp = image_tools.resize_with_pad(image_jnp, 224, 224)
         image_jnp = einops.rearrange(image_jnp, "(t v) h w c -> t v h w c", t=t, v=v)
         output_emb = self.vision_enc(image_jnp)  # (t, v, 64, 2048)
-        
+
         pooled_emb_8x8 = pool_tokens_to_size(output_emb, 64)  # (t, v, 64, 2048)
         pooled_emb_4x4 = pool_tokens_to_size(output_emb, 16)  # (t, v, 16, 2048)
         pooled_emb_2x2 = pool_tokens_to_size(output_emb, 4)  # (t, v, 4, 2048)
-        
+
         for i, step_idx in enumerate(step_idx_list):
             image_emb_8x8 = jax.device_get(pooled_emb_8x8)[i]  # (v, 64, 2048)
             image_emb_4x4 = jax.device_get(pooled_emb_4x4)[i]  # (v, 16, 2048)
@@ -371,7 +379,15 @@ class MemoryBufferRecurrent(MemoryBuffer):
         
         t, v, _, _, _ = images.shape
         assert v == self.num_views
-        
+
+        # numpy slices past the end return empty arrays silently; assert here so
+        # out-of-budget shows up as an explicit error instead of a downstream stack-shape mismatch.
+        max_step_idx = max(step_idx_list)
+        assert (max_step_idx + 1) * self.num_views <= self.pos_emb_dict["8x8"].shape[0], (
+            f"step_idx {max_step_idx} exceeds pos_emb_dict budget "
+            f"({self.pos_emb_dict['8x8'].shape[0] // self.num_views}); increase MemoryBuffer max_steps."
+        )
+
         image_jnp = jnp.array(
             images.astype(np.float32) / 255.0 * 2.0 - 1.0
         )
@@ -379,7 +395,7 @@ class MemoryBufferRecurrent(MemoryBuffer):
         image_jnp = image_tools.resize_with_pad(image_jnp, 224, 224)
         image_jnp = einops.rearrange(image_jnp, "(t v) h w c -> t v h w c", t=t, v=v)
         output_emb = self.vision_enc(image_jnp)  # (t, v, 64, 2048)
-        
+
         # use 8x8 tokens, since recurrent memory can take more tokens than perceptual memory
         pooled_emb_8x8 = pool_tokens_to_size(output_emb, 64)  # (t, v, 64, 2048)
         
