@@ -189,7 +189,7 @@ class DatasetProcessor:
         """Process all .h5 files; optionally cap episodes per file (default: process all)."""
         global_episode_idx = 0
         mem_buffer = MemoryBuffer(
-            num_views=1,
+            num_views=3,
             compute_token_drop_score=True,
             token_drop_stride=self.execution_horizon // 2,
             prepare_buffer=True,
@@ -259,6 +259,11 @@ class DatasetProcessor:
             state = np.concatenate([joint_state, gripper_state[:1]], axis=0, dtype=np.float32)
             image = ts["obs"]["front_rgb"][()]
             wrist_image = ts["obs"]["wrist_rgb"][()]
+            # Load top camera if available
+            if "top_rgb" in ts["obs"]:
+                top_image = ts["obs"]["top_rgb"][()]
+            else:
+                top_image = None
             is_video_demo = step_idx < exec_start_idx
             assert ts["info"]["is_video_demo"][()] == is_video_demo, "is_video_demo mismatch"
 
@@ -274,6 +279,7 @@ class DatasetProcessor:
             frame_dict = {
                 "image": image,
                 "wrist_image": wrist_image,
+                "top_image": top_image,
                 "state": state,
                 "actions": action_chunk,
                 "is_demo": np.array([is_video_demo], dtype=np.bool_),
@@ -287,7 +293,15 @@ class DatasetProcessor:
                 "grounded_subgoal_online": grounded_subgoal_online.lower(),
             }
 
-            mem_buffer.add_buffer(image[None, None, ...], state[None, ...], [step_idx])
+            # Stack all available camera views for memory buffer
+            if top_image is not None:
+                # Stack 3 cameras: front, wrist, top -> shape (1, 3, 224, 224, 3)
+                stacked_images = np.stack([image, wrist_image, top_image], axis=0)[None, ...]
+            else:
+                # Fallback: only 2 cameras, pad with zeros
+                stacked_images = np.stack([image, wrist_image, np.zeros_like(image)], axis=0)[None, ...]
+
+            mem_buffer.add_buffer(stacked_images, state[None, ...], [step_idx])
             feat_path = os.path.join(episode_feature_dir, f"token_emb_{step_idx}.npy")
             np.save(feat_path, mem_buffer.get_history_feats(step_idx))
 
@@ -300,7 +314,11 @@ class DatasetProcessor:
             total_sample_id += 1
 
             visualization_videos.append(image.copy())
-            record_videos.append(np.concatenate([image, wrist_image], axis=1))
+            # Concatenate all available camera views for recording
+            if top_image is not None:
+                record_videos.append(np.concatenate([image, wrist_image, top_image], axis=1))
+            else:
+                record_videos.append(np.concatenate([image, wrist_image], axis=1))
 
         kept_indices = mem_buffer.get_token_dropping_indices()
         with open(os.path.join(episode_feature_dir, "kept_indices.json"), "w") as f:
