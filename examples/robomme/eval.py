@@ -91,17 +91,34 @@ class EpisodeEvaluator:
         success_flag = "unknown"
         subgoal = None
         last_subgoal = None
+        subgoal_switch_delayed = False
 
         while True:
             subgoal_predictor.step(epstate)
 
             if not epstate.action_plan:
-                if epstate.count % self.args.subgoal_keep_period == 0 or last_subgoal is None:
+                if (
+                    epstate.count % self.args.subgoal_keep_period == 0
+                    or last_subgoal is None
+                    or subgoal_switch_delayed
+                ):
                     subgoal, has_api_error = subgoal_predictor.get_subgoal(
                         epstate.count,
                         subgoal,
                         last_subgoal,
                     )
+                    if subgoal_switch_delayed:
+                        subgoal_switch_delayed = False
+                    elif (
+                        env_runner.env_id == "PickHighlight"
+                        and self.args.use_oracle
+                        and self.args.subgoal_type == "grounded_subgoal"
+                        and (last_subgoal or "").startswith("place ")
+                        and (subgoal or "").startswith("pick ")
+                    ):
+                        # Finish placing/lifting for one more chunk before the next pick.
+                        subgoal = last_subgoal
+                        subgoal_switch_delayed = True
                 else:
                     subgoal = last_subgoal
                     has_api_error = False
