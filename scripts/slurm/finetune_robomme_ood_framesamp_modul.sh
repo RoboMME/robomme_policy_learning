@@ -8,15 +8,17 @@
 #SBATCH --gpus-per-node=4
 #SBATCH --mem-per-gpu=48G
 #SBATCH --time=4-00:00:00
-#SBATCH --output=/home/daiyp/MME-VLA-Suite/runs/logs/slurm/%x-%j.log
+#SBATCH --output=/nfs/turbo/coe-chaijy-unreplicated/RoboMME/mme_vla_suite_ood/logs/%x-%j.log
 
-# Submit from the repository root after creating the log directory:
-#   mkdir -p runs/logs/slurm
+# Submit on Great Lakes from the checked-out repository root:
+#   mkdir -p /nfs/turbo/coe-chaijy-unreplicated/RoboMME/mme_vla_suite_ood/logs
 #   sbatch scripts/slurm/finetune_robomme_ood_framesamp_modul.sh
 # Validate paths and the parsed configuration without allocating GPUs:
 #   bash scripts/slurm/finetune_robomme_ood_framesamp_modul.sh --dry-run
-# On another machine, set MME_VLA_REPO_DIR and MME_VLA_PYTHON as needed;
-# override the Slurm log path with sbatch --output=/existing/directory/%x-%j.log.
+# MME_VLA_PYTHON defaults to the environment used by the existing Great Lakes
+# training scripts. Override it to use a different installed environment.
+# MME_VLA_REPO_DIR overrides the submission directory. Slurm copies this script
+# into its spool directory, so do not locate the repository using BASH_SOURCE.
 
 set -euo pipefail
 
@@ -28,20 +30,23 @@ elif (( $# != 0 )); then
     exit 2
 fi
 
-REPO_DIR="${MME_VLA_REPO_DIR:-/home/daiyp/MME-VLA-Suite}"
-TRAIN_PYTHON="${MME_VLA_PYTHON:-$REPO_DIR/.venv/bin/python}"
-SOURCE_CHECKPOINT="${MME_VLA_SOURCE_CHECKPOINT:-$REPO_DIR/runs/ckpts/mme_vla_suite_v0/perceptual-framesamp-modul/79999}"
+REPO_DIR="${MME_VLA_REPO_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
+TRAIN_PYTHON="${MME_VLA_PYTHON:-/nfs/turbo/coe-chaijy/daiyp/micromamba_gl/envs/openpi/bin/python}"
+SOURCE_CHECKPOINT="${MME_VLA_SOURCE_CHECKPOINT:-/nfs/turbo/coe-chaijy-unreplicated/RoboMME/mme_vla_suite/perceptual-framesamp-modul/79999}"
 DATASET_PATH="${MME_VLA_DATASET_PATH:-/nfs/turbo/coe-chaijy-unreplicated/RoboMME/robomme_ood_preprocessed_data_1021}"
-CHECKPOINT_BASE_DIR="${MME_VLA_CHECKPOINT_BASE_DIR:-$REPO_DIR/runs/ckpts}"
+CHECKPOINT_BASE_DIR="${MME_VLA_CHECKPOINT_BASE_DIR:-/nfs/turbo/coe-chaijy-unreplicated/RoboMME}"
 EXP_NAME="${MME_VLA_EXP_NAME:-perceptual-framesamp-modul-ood-1021-10k}"
 
 cd "$REPO_DIR"
+[[ -f scripts/train_ood.py ]] || { printf 'Submit from the updated repository root, or set MME_VLA_REPO_DIR\n' >&2; exit 1; }
 [[ -x "$TRAIN_PYTHON" ]] || { printf 'Missing Python environment: %s\n' "$TRAIN_PYTHON" >&2; exit 1; }
 [[ -d "$SOURCE_CHECKPOINT/params" ]] || { printf 'Missing source checkpoint: %s\n' "$SOURCE_CHECKPOINT" >&2; exit 1; }
 [[ -f "$SOURCE_CHECKPOINT/assets/robomme/norm_stats.json" ]] || { printf 'Missing source normalization statistics\n' >&2; exit 1; }
 [[ -f "$DATASET_PATH/meta/stats.json" ]] || { printf 'Missing preprocessed dataset metadata: %s\n' "$DATASET_PATH" >&2; exit 1; }
 
 export OPENPI_DATA_HOME="${OPENPI_DATA_HOME:-/nfs/turbo/coe-chaijy-unreplicated/pre-trained-weights/VLA/openpi}"
+# Use this checkout even if the shared environment has another editable repo.
+export PYTHONPATH="$REPO_DIR/src:$REPO_DIR/packages/openpi-client/src${PYTHONPATH:+:$PYTHONPATH}"
 export XLA_PYTHON_CLIENT_MEM_FRACTION="${XLA_PYTHON_CLIENT_MEM_FRACTION:-0.92}"
 export PYTHONUNBUFFERED=1
 export OMP_NUM_THREADS=1
