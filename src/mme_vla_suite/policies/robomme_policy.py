@@ -13,6 +13,7 @@ def make_robomme_example() -> dict:
         "observation/state": np.random.rand(8),
         "observation/image": np.random.randint(256, size=(224, 224, 3), dtype=np.uint8),
         "observation/wrist_image": np.random.randint(256, size=(224, 224, 3), dtype=np.uint8),
+        "observation/top_image": np.random.randint(256, size=(224, 224, 3), dtype=np.uint8),
         "prompt": "do something",
     }
 
@@ -43,6 +44,11 @@ class RoboMMEInputs(transforms.DataTransformFn):
     def __call__(self, data: dict) -> dict:
         base_image = _parse_image(data["observation/image"])
         wrist_image = _parse_image(data["observation/wrist_image"])
+        # Support for top camera view
+        if "observation/top_image" in data:
+            top_image = _parse_image(data["observation/top_image"])
+        else:
+            top_image = np.zeros_like(base_image)
 
         # Create inputs dict. Do not change the keys in the dict below.
         inputs = {
@@ -50,14 +56,12 @@ class RoboMMEInputs(transforms.DataTransformFn):
             "image": {
                 "base_0_rgb": base_image,
                 "left_wrist_0_rgb": wrist_image,
-                # Pad any non-existent images with zero-arrays of the appropriate shape.
-                # "right_wrist_0_rgb": np.zeros_like(base_image), # remove the third image for memory saving
+                "right_wrist_0_rgb": top_image,  # Use top camera as third view
             },
             "image_mask": {
                 "base_0_rgb": np.True_,
                 "left_wrist_0_rgb": np.True_,
-                # We only mask padding images for pi0 model, not pi0-FAST. Do not change this for your own dataset.
-                # "right_wrist_0_rgb": np.False_,
+                "right_wrist_0_rgb": "observation/top_image" in data,  # Only mask if top camera exists
             },
             # perceptual memory
             "static_image_emb": data.get("static_image_emb", None), # (budget, d1)
